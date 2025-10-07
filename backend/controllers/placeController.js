@@ -206,7 +206,7 @@ export const getAllAttractions = async (req, res) => {
 		let allAttractions = [];
 
 		// Use Legacy API (more reliable) instead of New API v1
-		const attractionTypes = ["museum", "park", "place_of_worship", "stadium", "zoo", "amusement_park"];
+		const attractionTypes = ["museum", "park", "church", "hindu_temple", "stadium", "zoo", "amusement_park"];
 
 		// Fetch using Legacy Places API (more stable)
 		for (const type of attractionTypes) {
@@ -246,38 +246,6 @@ export const getAllAttractions = async (req, res) => {
 			}
 		}
 
-		// Optional text search for popular attractions
-		// if (city && allAttractions.length < 10) {
-		// 	try {
-		// 		const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(city)}+tourist+attractions&key=${process.env.GOOGLE_API_KEY}`;
-		// 		const textRes = await axios.get(textSearchUrl);
-
-		// 		if (textRes.data.status === "OK") {
-		// 			const textAttractions = textRes.data.results.slice(0, 10).map((place) => ({
-		// 				name: place.name,
-		// 				address: place.formatted_address,
-		// 				latitude: place.geometry.location.lat,
-		// 				longitude: place.geometry.location.lng,
-		// 				rating: place.rating || "N/A",
-		// 				userRatingsTotal: place.user_ratings_total || 0,
-		// 				types: place.types || [],
-		// 				placeId: place.place_id,
-		// 				priceLevel: place.price_level || "N/A",
-		// 				photos: place.photos
-		// 					? place.photos.slice(0, 2).map((photo) => ({
-		// 							reference: photo.photo_reference,
-		// 							photoUrl: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${process.env.GOOGLE_API_KEY}`,
-		// 					  }))
-		// 					: [],
-		// 			}));
-
-		// 			allAttractions = [...allAttractions, ...textAttractions];
-		// 		}
-		// 	} catch (textError) {
-		// 		console.error("Text search error:", textError.message);
-		// 	}
-		// }
-
 		// Remove duplicates by placeId
 		const uniqueAttractions = [...new Map(allAttractions.map((a) => [a.placeId, a])).values()];
 
@@ -314,5 +282,31 @@ export const getAllAttractions = async (req, res) => {
 			error: "Failed to fetch attractions",
 			details: err.message,
 		});
+	}
+};
+
+import Place from "../models/Place.js";
+
+export const getAttractionsByCity = async (req, res) => {
+	try {
+		const { city } = req.body;
+
+		if (!city) {
+			return res.status(400).json({ error: "City name is required" });
+		}
+
+		// Case-insensitive match (e.g., "Jaipur" == "jaipur")
+		const attractions = await Place.find(
+			{ city: { $regex: new RegExp(`^${city}$`, "i") } } // case-insensitive filter
+		).select("name city lat long feature image"); // select only needed fields
+
+		if (!attractions.length) {
+			return res.status(404).json({ message: `No attractions found in ${city}` });
+		}
+
+		res.json(attractions);
+	} catch (err) {
+		console.error("Error fetching attractions:", err);
+		res.status(500).json({ error: "Failed to fetch attractions" });
 	}
 };

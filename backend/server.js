@@ -3,9 +3,11 @@ import dotenv from "dotenv";
 import express from "express";
 dotenv.config();
 
-import { connectDB } from "./config/db.js";
+import itineraryRoutes from "./routes/itineraryRoute.js";
 import weatherTrafficRoutes from "./routes/locationInfoRoute.js";
 import placeRoutes from "./routes/placeRoute.js";
+
+import { connectDB } from "./config/db.js";
 
 const app = express();
 
@@ -17,6 +19,7 @@ await connectDB();
 
 app.use("/api/places", placeRoutes);
 app.use("/api/location-info", weatherTrafficRoutes);
+app.use("/api/itinerary", itineraryRoutes);
 
 const PORT = process.env.PORT || 3000;
 
