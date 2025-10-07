@@ -282,23 +282,21 @@ const haversineDistance = (lat1, lng1, lat2, lng2) => {
 	return R * c; // Distance in km
 };
 
-// K-means clustering with flexible cluster sizes
-const kMeansClusteringFlexible = (attractions, k, maxIterations = 100) => {
+const KMeans = (attractions, k, maxIterations = 100) => {
 	if (attractions.length === 0 || k <= 0) return [];
 
-	// Adjust k if we don't have enough attractions
 	const actualK = Math.min(k, attractions.length);
 
-	// K-means++ initialization for better initial centroids
 	let centroids = [];
-	const firstIdx = Math.floor(Math.random() * attractions.length);
+	const firstIdx = Math.floor(Math.random() * attractions.length); //selecting a random centroid
 	centroids.push({
 		lat: attractions[firstIdx].latitude,
 		lng: attractions[firstIdx].longitude,
 	});
 
-	// K-means++ - choose remaining centroids based on distance
+	//choose remaining centroids based on distance
 	while (centroids.length < actualK) {
+		// compute squared minimum distance from each point to the existing centroids
 		const distances = attractions.map((attr) => {
 			const minDist = Math.min(...centroids.map((c) => haversineDistance(attr.latitude, attr.longitude, c.lat, c.lng)));
 			return minDist * minDist;
@@ -386,17 +384,15 @@ export const generateItinerary = async (req, res) => {
 		}
 
 		const attractionsPerDay = 4;
-		const fetchLimit = days * attractionsPerDay + 5; // Extra buffer
+		const fetchLimit = days * attractionsPerDay + 5;
 
-		// Fetch top ranked attractions for city
 		const allAttractions = await Place.find({ city }).sort({ ranking: 1 }).limit(fetchLimit).select("name city latitude longitude feature image ranking entry_fee opening_time closing_time");
 
 		if (allAttractions.length === 0) {
 			return res.status(404).json({ error: "No attractions found for this city" });
 		}
 
-		// Apply k-means clustering
-		const clusters = kMeansClusteringFlexible(allAttractions, days);
+		const clusters = KMeans(allAttractions, days);
 
 		// Calculate distance from start point to each cluster's centroid
 		const clustersWithDistance = clusters.map((cluster) => {
@@ -415,18 +411,15 @@ export const generateItinerary = async (req, res) => {
 		// Sort clusters by distance from start point (nearest first)
 		clustersWithDistance.sort((a, b) => a.distance - b.distance);
 
-		// Create balanced itinerary
 		const itinerary = [];
 		let remainingAttractions = allAttractions.sort((a, b) => a.ranking - b.ranking); // Sort all by ranking
 
 		for (let day = 0; day < days; day++) {
-			// Get attractions for this cluster if available, otherwise use remaining pool
 			let availableForDay = day < clustersWithDistance.length ? clustersWithDistance[day].attractions.sort((a, b) => a.ranking - b.ranking) : remainingAttractions;
 
-			// Take 4-5 attractions for this day
 			const targetCount = Math.min(
 				availableForDay.length,
-				Math.random() > 0.5 ? 4 : 5 // Randomly choose 4 or 5
+				Math.random() > 0.5 ? 4 : 5 //random
 			);
 
 			const dayAttractions = availableForDay.slice(0, targetCount);

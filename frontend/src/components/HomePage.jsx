@@ -21,7 +21,6 @@ const HomePage = () => {
 			</div>
 
 			<div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
-				{/* UPDATED: Link now points to "#" */}
 				<Link
 					to="#"
 					className="group block p-8 rounded-xl bg-black/15 backdrop-blur-md border border-white/30 shadow-xl transition-all duration-300 transform hover:-translate-y-2 hover:bg-black/25 hover:shadow-2xl hover:shadow-primary/30 hover:border-primary/50"
@@ -30,7 +29,6 @@ const HomePage = () => {
 					<p className="mt-2 text-base text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0_/_0.4)]">Already have a plan? Input your destinations, dates, and activities to build a detailed itinerary.</p>
 				</Link>
 
-				{/* UPDATED: Link now points to "#" */}
 				<Link
 					to="#"
 					className="group block p-8 rounded-xl bg-black/15 backdrop-blur-md border border-white/30 shadow-xl transition-all duration-300 transform hover:-translate-y-2 hover:bg-black/25 hover:shadow-2xl hover:shadow-primary/30 hover:border-primary/50"

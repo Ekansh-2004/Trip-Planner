@@ -1,104 +1,10 @@
-// // src/pages/ItineraryPage.jsx
-// import React, { useState } from 'react';
-
-// // We will create these new components below
-// import { DayNavigation } from '../components/DayNavigation';
-// import { ActivityCard } from '../components/ActivityCard';
-// import { TravelConnector } from '../components/TravelConnector';
-// import { ActionCard } from '../components/ActionCard';
-// import Navbar from '../components/Navbar'; // Assuming your Navbar is in components
-
-// const ItineraryPage = () => {
-//   // Placeholder data that you will later fetch from your backend
-//   const itineraryData = {
-//     tripTitle: "Your 3-Day Trip to Jaipur",
-//     days: ["Day 1", "Day 2", "Day 3"],
-//     timeline: {
-//       "Day 1": [
-//         { type: 'section', title: 'Morning' },
-//         {
-//           type: 'activity',
-//           details: { title: "Amber Fort", rating: 4.8, reviews: "1000+", fee: "$15", weather: "25°C", imageUrl: "https://source.unsplash.com/random/400x400?amber-fort" }
-//         },
-//         { type: 'travel', details: { time: "15 min", distance: "5 km" } },
-//         {
-//           type: 'activity',
-//           details: { title: "Hawa Mahal", rating: 4.6, reviews: "600+", fee: "$5", weather: "27°C", imageUrl: "https://source.unsplash.com/random/400x400?hawa-mahal" }
-//         },
-//         { type: 'action', details: { title: "Feeling Peckish?", subtitle: "Discover local flavors and refuel for your adventure.", buttonText: "Find Food" } },
-//         { type: 'section', title: 'Afternoon' },
-//         {
-//           type: 'activity',
-//           details: { title: "City Palace", rating: 4.7, reviews: "800+", fee: "$10", weather: "26°C", imageUrl: "https://source.unsplash.com/random/400x400?city-palace-jaipur" }
-//         },
-//         { type: 'travel', details: { time: "20 min", distance: "7 km", traffic: "Heavy" } },
-//         {
-//           type: 'activity',
-//           details: { title: "Jantar Mantar", rating: 4.4, reviews: "400+", fee: "$8", weather: "28°C", imageUrl: "https://source.unsplash.com/random/400x400?jantar-mantar" }
-//         },
-//         { type: 'section', title: 'Evening' },
-//         { type: 'action', details: { title: "Ready for Dinner?", subtitle: "End your day with a memorable meal.", buttonText: "Find Restaurants" } },
-//         { type: 'travel', details: { time: "Back to Hotel" } },
-//         { type: 'action', details: { title: "Time to Rest?", subtitle: "Find the perfect hotel to recharge for tomorrow.", buttonText: "Find Hotels" } },
-//       ],
-//       // You can add data for "Day 2" and "Day 3" here following the same structure
-//       "Day 2": [],
-//       "Day 3": [],
-//     }
-//   };
-
-//   const [activeDay, setActiveDay] = useState("Day 1");
-
-//   return (
-//     <div>
-//       <Navbar />
-//       <main className="max-w-4xl mx-auto px-4 py-8">
-//         <h1 className="text-4xl font-bold text-gray-800 mb-4">{itineraryData.tripTitle}</h1>
-
-//         <DayNavigation
-//           days={itineraryData.days}
-//           activeDay={activeDay}
-//           onDaySelect={setActiveDay}
-//         />
-
-//         <div className="mt-8">
-//           {/* Main Timeline Container */}
-//           <div className="relative pl-6">
-//             {/* The vertical dotted line */}
-//             <div className="absolute left-[34px] top-0 h-full w-px bg-gray-200 border-l-2 border-dashed border-gray-300"></div>
-
-//             <h2 className="text-2xl font-bold mb-4 flex items-center">
-//               <span className="absolute left-[24px] w-5 h-5 bg-green-500 rounded-full border-4 border-white"></span>
-//               {activeDay}
-//             </h2>
-
-//             {itineraryData.timeline[activeDay].map((item, index) => {
-//               switch (item.type) {
-//                 case 'section':
-//                   return <h3 key={index} className="text-xl font-bold text-gray-500 my-6">{item.title}</h3>;
-//                 case 'activity':
-//                   return <ActivityCard key={index} {...item.details} />;
-//                 case 'travel':
-//                   return <TravelConnector key={index} {...item.details} />;
-//                 case 'action':
-//                   return <ActionCard key={index} {...item.details} />;
-//                 default:
-//                   return null;
-//               }
-//             })}
-//           </div>
-//         </div>
-//       </main>
-//     </div>
-//   );
-// };
-
-// export default ItineraryPage;
 import { useEffect, useState } from "react";
 import { ActionCard } from "../components/ActionCard";
 import { ActivityCard } from "../components/ActivityCard";
 import { DayNavigation } from "../components/DayNavigation";
 import { TravelConnector } from "../components/TravelConnector";
+
+import LoadingSpinner from "./LoadingSpinner";
 
 const ItineraryPage = () => {
 	const [activeDay, setActiveDay] = useState("Day 1");
@@ -107,7 +13,7 @@ const ItineraryPage = () => {
 	const [error, setError] = useState(null);
 
 	// CONFIGURABLE VARIABLES
-	const DAYS = 3; // Change this to any number
+	const DAYS = 3;
 	const CITY = "Jaipur";
 	const JAIPUR_JUNCTION = { lat: 26.9157, lng: 75.8189 };
 
@@ -119,7 +25,7 @@ const ItineraryPage = () => {
 		try {
 			setLoading(true);
 
-			// Fetch itinerary from backend
+			// Fetch itinerary
 			const response = await fetch("http://localhost:3000/api/itinerary/", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -127,7 +33,7 @@ const ItineraryPage = () => {
 					startLat: JAIPUR_JUNCTION.lat,
 					startLng: JAIPUR_JUNCTION.lng,
 					city: CITY,
-					days: DAYS, // Using variable
+					days: DAYS,
 					minAttractionsPerDay: 3,
 					maxAttractionsPerDay: 5,
 				}),
@@ -143,7 +49,6 @@ const ItineraryPage = () => {
 				throw new Error(data.error);
 			}
 
-			// Transform backend data to frontend format
 			await buildItineraryTimeline(data.itinerary);
 		} catch (err) {
 			console.error("Error fetching itinerary:", err);
@@ -331,7 +236,7 @@ const ItineraryPage = () => {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-xl font-semibold">Loading your itinerary...</div>
+				<LoadingSpinner />
 			</div>
 		);
 	}

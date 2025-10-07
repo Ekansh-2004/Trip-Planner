@@ -7,7 +7,6 @@ export const getCoordinates = async (location) => {
 	}
 
 	try {
-		// Using Google Geocoding API
 		if (process.env.GOOGLE_API_KEY) {
 			const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${process.env.GOOGLE_API_KEY}`;
 

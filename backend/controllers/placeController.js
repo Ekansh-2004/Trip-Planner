@@ -8,8 +8,6 @@ export const getCoordinates = async (req, res) => {
 
 		const geoRes = await axios.get(geoUrl);
 
-		// Debug: Log the full response
-
 		if (geoRes.data.status !== "OK") {
 			console.error("Geocoding failed with status:", geoRes.data.status);
 			console.error("Error message:", geoRes.data.error_message || "No error message provided");
@@ -61,7 +59,6 @@ export const getNearbyHotels = async (req, res) => {
 
 export const getNearbyRestaurants = async (req, res) => {
 	try {
-		// Input validation
 		if (!req.body || Object.keys(req.body).length === 0) {
 			return res.status(400).json({
 				error: "Request body is required",
@@ -77,7 +74,6 @@ export const getNearbyRestaurants = async (req, res) => {
 			});
 		}
 
-		// Try Legacy API first (more cost-effective)
 		try {
 			const legacyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=restaurant&key=${process.env.GOOGLE_API_KEY}`;
 
@@ -122,7 +118,6 @@ export const getNearbyRestaurants = async (req, res) => {
 			console.error("Legacy API failed:", legacyError.message);
 		}
 
-		// Fallback to New API v1 with cost-optimized field mask
 		const requestData = {
 			includedTypes: ["restaurant"],
 			maxResultCount: 20,
@@ -134,7 +129,6 @@ export const getNearbyRestaurants = async (req, res) => {
 			},
 		};
 
-		// ✅ Cost-optimized field mask - Advanced tier only ($35 CPM)
 		const response = await axios.post("https://places.googleapis.com/v1/places:searchNearby", requestData, {
 			headers: {
 				"Content-Type": "application/json",
@@ -295,10 +289,7 @@ export const getAttractionsByCity = async (req, res) => {
 			return res.status(400).json({ error: "City name is required" });
 		}
 
-		// Case-insensitive match (e.g., "Jaipur" == "jaipur")
-		const attractions = await Place.find(
-			{ city: { $regex: new RegExp(`^${city}$`, "i") } } // case-insensitive filter
-		).select("name city lat long feature image"); // select only needed fields
+		const attractions = await Place.find({ city: { $regex: new RegExp(`^${city}$`, "i") } }).select("name city lat long feature image");
 
 		if (!attractions.length) {
 			return res.status(404).json({ message: `No attractions found in ${city}` });

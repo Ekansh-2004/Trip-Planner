@@ -14,13 +14,12 @@ export const getCombinedLocationInfo = async (req, res) => {
 
 		// Parallel API calls for better performance
 		const [weatherResponse, trafficResponse] = await Promise.allSettled([
-			// Google Weather API [web:514][web:515]
 			axios.get("https://weather.googleapis.com/v1/currentConditions:lookup", {
 				params: {
-					key: process.env.GOOGLE_API_KEY, // Same key works for weather
+					key: process.env.GOOGLE_API_KEY,
 					"location.latitude": destLat,
 					"location.longitude": destLng,
-					unitsSystem: "METRIC", // For Celsius
+					unitsSystem: "METRIC",
 				},
 			}),
 
@@ -43,7 +42,7 @@ export const getCombinedLocationInfo = async (req, res) => {
 			traffic: null,
 		};
 
-		// Process weather data [web:512]
+		// Process weather data
 		if (weatherResponse.status === "fulfilled") {
 			const weather = weatherResponse.value.data;
 			result.weather = {
