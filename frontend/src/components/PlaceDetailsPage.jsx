@@ -4,7 +4,6 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// A simple spinner for loading details
 const DetailsSpinner = () => (
 	<div className="text-center p-8">
 		<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF6B35] mx-auto mb-4"></div>
@@ -268,7 +267,7 @@ const PlaceDetailsPage = () => {
 			<div className="max-w-4xl mx-auto px-4">
 				<div className="flex items-center mb-8">
 					<button
-						onClick={() => navigate("/")}
+						onClick={() => navigate("/discover")}
 						className="bg-white p-3 rounded-full shadow-md hover:shadow-lg text-[#212529] hover:text-[#FF6B35] transition-all flex items-center justify-center"
 					>
 						<svg

@@ -13,7 +13,7 @@ const ItineraryPage = () => {
 	const [error, setError] = useState(null);
 
 	// CONFIGURABLE VARIABLES
-	const DAYS = 3;
+	const DAYS = 2;
 	const CITY = "Jaipur";
 	const JAIPUR_JUNCTION = { lat: 26.9157, lng: 75.8189 };
 

@@ -42,12 +42,12 @@ const Navbar = () => {
 					<nav className="hidden md:flex items-center gap-8">
 						<a
 							className="text-base font-medium text-[#6C757D] hover:text-[#212529] transition-colors"
-							href="#"
+							href="/"
 						>
 							Home
 						</a>
 						<Link
-							to="/"
+							to="/discover"
 							className="text-base font-medium text-[#FF6B35]"
 						>
 							Discover
@@ -60,7 +60,7 @@ const Navbar = () => {
 						</a>
 						<a
 							className="text-base font-medium text-[#6C757D] hover:text-[#212529] transition-colors"
-							href="#"
+							href="/"
 						>
 							Community
 						</a>
