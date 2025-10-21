@@ -25,7 +25,8 @@ const DayPlanSchema = new mongoose.Schema({
 });
 
 const ItinerarySchema = new mongoose.Schema({
-	userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+	user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+
 	city: { type: String, required: true },
 	startLocation: {
 		lat: { type: Number, required: true },

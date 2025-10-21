@@ -23,7 +23,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 	const [error, setError] = useState("");
 	const [showAll, setShowAll] = useState(false);
 
-	const API_BASE_URL = "http://localhost:3000/api/places";
 
 	const getCoordinates = async () => {
 		if (!location.trim()) {
