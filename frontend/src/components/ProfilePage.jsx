@@ -32,7 +32,6 @@ const ProfilePage = () => {
 				setUser(userData);
 				if (!itineraryRes.ok) throw new Error(`Failed to fetch trip history: ${itineraryRes.statusText}`);
 				const itineraryData = await itineraryRes.json();
-				console.log(itineraryData);
 				setItineraries(itineraryData);
 			} catch (err) {
 				setError(err.message);
@@ -60,7 +59,7 @@ const ProfilePage = () => {
 						<>
 							<div
 								className="relative size-32 rounded-full bg-cover bg-center shadow-lg border-4 border-white"
-								style={{ backgroundImage: `url(${user.profileImg || "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.vecteezy.com%2Ffree-vector%2Fdefault-user&psig=AOvVaw0ibdEo5q597FWzhanRKPfm&ust=1761148575639000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCOj5v-vTtZADFQAAAAAdAAAAABAL"}` }}
+								style={{ backgroundImage: `url(${user.profileImg || "./avatar.jpg"}` }}
 							></div>
 							<div>
 								<h2 className="text-3xl font-bold text-[#221810]">{user.fullName}</h2>

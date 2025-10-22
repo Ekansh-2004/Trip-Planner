@@ -29,7 +29,7 @@ const LoginPage = ({ onLogin }) => {
 			const res = await fetch("http://localhost:3000/api/auth/login", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				withCredentials: "include",
+				 credentials: "include",
 				body: JSON.stringify({
 					username: formData.username,
 					password: formData.password,
@@ -58,7 +58,7 @@ const LoginPage = ({ onLogin }) => {
 			const res = await fetch("http://localhost:3000/api/auth/signup", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				withCredentials: "include",
+				 credentials: "include",
 				body: JSON.stringify({
 					fullName: formData.fullName,
 					username: formData.username,

@@ -80,7 +80,7 @@ const Navbar = ({ authUser, onLogout }) => {
 									<div
 										className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 border-2 border-[#FF6B35]"
 										style={{
-											backgroundImage: `url("${authUser.profileImg || "https://avatar.iran.liara.run/public/boy?username=trip-sage"}")`,
+											backgroundImage: `url("${authUser.profileImg || "./avatar.jpg"}")`,
 										}}
 									></div>
 								</Link>

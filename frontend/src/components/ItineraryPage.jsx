@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { ActionCard } from "../components/ActionCard";
 import { ActivityCard } from "../components/ActivityCard";
 import { DayNavigation } from "../components/DayNavigation";
@@ -13,28 +13,59 @@ const ItineraryPage = () => {
 	const [error, setError] = useState(null);
 
 	const location = useLocation();
-	const navigate = useNavigate();
-	const tripData = location.state || {};
-	const { city, startLocation, startDate, endDate } = tripData;
+	const locationState = location.state || {}; // Ensure state is not null
+
+	// Data for a NEWLY generated trip
+	const { city, startLocation, startDate, endDate } = locationState;
+
+	// Data from trip HISTORY (ProfilePage)
+	// This 'existingHistoryItem' is the 'itinerary' object from ProfilePage
+	const { itineraryData: existingHistoryItem } = locationState;
 
 	useEffect(() => {
+		// Priority 1: Load and build from history state (ProfilePage)
+		if (existingHistoryItem) {
+			setLoading(true);
+
+			// We assume existingHistoryItem is { city: '...', itinerary: [...] }
+			// The 'itinerary' property is the array buildItineraryTimeline expects.
+			if (existingHistoryItem.daysPlan && existingHistoryItem.city) {
+				// Build the timeline from the history object. Pass null for cacheInfo
+				// because we don't have start/end dates and can't build a cache key.
+				buildItineraryTimeline(existingHistoryItem.daysPlan, existingHistoryItem.city, null)
+					.catch((err) => {
+						console.error("Error building from history:", err);
+						setError(err.message);
+					})
+					.finally(() => {
+						setLoading(false);
+					});
+			} else {
+				console.error("History item is in wrong format:", existingHistoryItem);
+				setError("Could not load itinerary. Data from history is incomplete.");
+				setLoading(false);
+			}
+			return;
+		}
+
+		// Priority 2: Data for a NEW trip is missing
+		// (and we didn't have a history item)
 		if (!city || !startLocation) {
 			setLoading(false);
 			return;
 		}
 
+		// Priority 3: Generate a NEW trip (check cache first)
 		const cacheKey = `itinerary-${city}-${startLocation}-${startDate}-${endDate}`;
 		const cachedData = localStorage.getItem(cacheKey);
 
 		if (cachedData) {
-			console.log("Loading itinerary from cache.");
 			setItineraryData(JSON.parse(cachedData));
 			setLoading(false);
 		} else {
-			console.log("Fetching new itinerary from server.");
 			fetchItinerary(city, startLocation, startDate, endDate);
 		}
-	}, [city, startLocation, startDate, endDate]);
+	}, [existingHistoryItem, city, startLocation, startDate, endDate]);
 
 	const fetchItinerary = async (city, startLocation, startDate, endDate) => {
 		try {
@@ -62,7 +93,10 @@ const ItineraryPage = () => {
 			console.log(data);
 
 			if (data.error) throw new Error(data.error);
-			await buildItineraryTimeline(data.itinerary);
+
+			// Pass city and cacheInfo to the builder function
+			const cacheInfo = { startLocation, startDate, endDate };
+			await buildItineraryTimeline(data.itinerary, city, cacheInfo);
 		} catch (err) {
 			console.error("Error fetching itinerary:", err);
 			setError(err.message);
@@ -76,7 +110,7 @@ const ItineraryPage = () => {
 		return diff > 0 ? diff : 1;
 	};
 
-	const buildItineraryTimeline = async (backendItinerary) => {
+	const buildItineraryTimeline = async (backendItinerary, tripCity, cacheInfo = null) => {
 		const days = backendItinerary.map((_, idx) => `Day ${idx + 1}`);
 		const timeline = {};
 
@@ -207,6 +241,11 @@ const ItineraryPage = () => {
 		// Cache the newly generated itinerary
 		const cacheKey = `itinerary-${city}-${startLocation}-${startDate}-${endDate}`;
 		localStorage.setItem(cacheKey, JSON.stringify(finalData));
+		if (cacheInfo) {
+			const { startLocation, startDate, endDate } = cacheInfo;
+			const cacheKey = `itinerary-${tripCity}-${startLocation}-${startDate}-${endDate}`;
+			localStorage.setItem(cacheKey, JSON.stringify(finalData));
+		}
 
 		setItineraryData(finalData);
 	};
@@ -286,59 +325,63 @@ const ItineraryPage = () => {
 				/>
 
 				<div className="mt-8">
-					{itineraryData.days.map((dayKey) => (
-						<div
-							key={dayKey}
-							id={dayKey.replace(" ", "")}
-							className="mb-20 scroll-mt-24"
-						>
-							<div className="relative pl-14">
-								<div className="absolute left-[34px] top-0 h-full w-px bg-gray-200 border-l-2 border-dashed border-gray-300"></div>
+					{(itineraryData?.days || []).length > 0 ? (
+						itineraryData.days.map((dayKey) => (
+							<div
+								key={dayKey}
+								id={dayKey.replace(" ", "")}
+								className="mb-20 scroll-mt-24"
+							>
+								<div className="relative pl-14">
+									<div className="absolute left-[34px] top-0 h-full w-px bg-gray-200 border-l-2 border-dashed border-gray-300"></div>
 
-								<h2 className="text-2xl font-bold mb-4 flex items-center">
-									<span className="absolute left-[24px] w-5 h-5 bg-green-500 rounded-full border-4 border-white"></span>
-									{dayKey}
-								</h2>
+									<h2 className="text-2xl font-bold mb-4 flex items-center">
+										<span className="absolute left-[24px] w-5 h-5 bg-green-500 rounded-full border-4 border-white"></span>
+										{dayKey}
+									</h2>
 
-								{(itineraryData.timeline[dayKey] || []).map((item, index) => {
-									switch (item.type) {
-										case "section":
-											return (
-												<h3
-													key={index}
-													className="text-xl font-bold text-gray-500 my-6"
-												>
-													{item.title}
-												</h3>
-											);
-										case "activity":
-											return (
-												<ActivityCard
-													key={index}
-													{...item.details}
-												/>
-											);
-										case "travel":
-											return (
-												<TravelConnector
-													key={index}
-													{...item.details}
-												/>
-											);
-										case "action":
-											return (
-												<ActionCard
-													key={index}
-													{...item.details}
-												/>
-											);
-										default:
-											return null;
-									}
-								})}
+									{(itineraryData.timeline?.[dayKey] || []).map((item, index) => {
+										switch (item.type) {
+											case "section":
+												return (
+													<h3
+														key={index}
+														className="text-xl font-bold text-gray-500 my-6"
+													>
+														{item.title}
+													</h3>
+												);
+											case "activity":
+												return (
+													<ActivityCard
+														key={index}
+														{...item.details}
+													/>
+												);
+											case "travel":
+												return (
+													<TravelConnector
+														key={index}
+														{...item.details}
+													/>
+												);
+											case "action":
+												return (
+													<ActionCard
+														key={index}
+														{...item.details}
+													/>
+												);
+											default:
+												return null;
+										}
+									})}
+								</div>
 							</div>
-						</div>
-					))}
+						))
+					) : (
+						<div className="text-gray-600 text-center mt-10">No itinerary timeline found for this trip.</div>
+					)}
 				</div>
 			</main>
 		</div>
