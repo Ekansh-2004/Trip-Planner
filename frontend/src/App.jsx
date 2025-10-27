@@ -50,7 +50,7 @@ function App() {
 	useEffect(() => {
 		const checkAuthStatus = async () => {
 			try {
-				const res = await fetch("http://localhost:3000/api/auth/me", { credentials: "include" });
+				const res = await fetch("http://localhost:3001/api/auth/me", { credentials: "include" });
 
 				const data = await res.json();
 				if (data.error) {
@@ -73,7 +73,7 @@ function App() {
 
 	const handleLogout = async () => {
 		try {
-			await fetch("http://localhost:3000/api/auth/logout", { method: "POST" });
+			await fetch("http://localhost:3001/api/auth/logout", { method: "POST" });
 			setAuthUser(null);
 		} catch (error) {
 			console.error("Logout failed:", error);

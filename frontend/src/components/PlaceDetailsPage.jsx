@@ -141,7 +141,7 @@ const PlaceDetailsPage = () => {
 	const fetchLocationInfo = async () => {
 		setLoading(true);
 		try {
-			const API_BASE_URL = "http://localhost:3000/api/location-info";
+			const API_BASE_URL = "http://localhost:3001/api/location-info";
 
 			const params = {
 				userLat: userLocation.lat,

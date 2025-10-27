@@ -109,7 +109,9 @@ export const generateItinerary = async (req, res) => {
 		const { startLat, startLng, city, days } = req.body;
 		console.log("Itinerary routes loaded");
 		if (!startLat || !startLng || !city || !days) {
-			return res.status(400).json({ error: "Missing required fields: startLat, startLng, city, days" });
+			return res.status(400).json({
+				error: "Missing required fields: startLat, startLng, city, days",
+			});
 		}
 
 		const latRange = 0.005;
@@ -123,7 +125,7 @@ export const generateItinerary = async (req, res) => {
 			city,
 			days,
 			"startLocation.lat": { $gte: latNum - latRange, $lte: latNum + latRange },
-			"startLocation.lng": { $gte: lngNum - lngRange, $lte: lngNum + lngRange },
+			"startLocation.lng": { $gte: lngNum - latRange, $lte: lngNum + latRange },
 		})
 			// This line is the solution. It populates all three arrays.
 			.populate("daysPlan.attractions daysPlan.morning daysPlan.evening");
@@ -132,15 +134,22 @@ export const generateItinerary = async (req, res) => {
 			return res.json({ itinerary: existingItinerary.daysPlan });
 		}
 
-		const attractionsPerDay = 4;
-		const fetchLimit = days * attractionsPerDay + 5;
+		// --- UPDATED LOGIC ---
+		const attractionsPerDay = 5;
+		const totalAttractionsNeeded = days * attractionsPerDay;
+		// Fetch a few extra to give KMeans more data and as a buffer
+		const fetchLimit = totalAttractionsNeeded + 10;
 
 		const allAttractions = await Place.find({ city }).sort({ ranking: 1 }).limit(fetchLimit).select("name city latitude longitude feature image ranking entry_fee opening_time closing_time");
 
-		if (allAttractions.length === 0) {
-			return res.status(404).json({ error: "No attractions found for this city" });
+		// Check if we have enough attractions for the *required* amount
+		if (allAttractions.length < totalAttractionsNeeded) {
+			return res.status(404).json({
+				error: `Not enough attractions found in ${city} to generate a ${days}-day itinerary (requires ${totalAttractionsNeeded}).`,
+			});
 		}
 
+		// Cluster all fetched attractions
 		const clusters = KMeans(allAttractions, days);
 
 		// Calculate distance from start point to each cluster's centroid
@@ -161,33 +170,51 @@ export const generateItinerary = async (req, res) => {
 		clustersWithDistance.sort((a, b) => a.distance - b.distance);
 
 		const itinerary = [];
-		let remainingAttractions = allAttractions.sort((a, b) => a.ranking - b.ranking); // Sort all by ranking
+		// This pool will shrink as we assign attractions
+		let remainingAttractions = allAttractions.sort((a, b) => a.ranking - b.ranking);
 
 		for (let day = 0; day < days; day++) {
-			let availableForDay = day < clustersWithDistance.length ? clustersWithDistance[day].attractions.sort((a, b) => a.ranking - b.ranking) : remainingAttractions;
+			let dayAttractions = [];
 
-			const minAttractions = 3;
-			const maxAttractions = 5;
-			const targetCount = Math.min(availableForDay.length, Math.max(minAttractions, Math.min(maxAttractions, availableForDay.length)));
+			if (day < clustersWithDistance.length) {
+				// Get base attractions from the cluster, sorted by ranking
+				dayAttractions = clustersWithDistance[day].attractions.sort((a, b) => a.ranking - b.ranking);
 
-			const dayAttractions = availableForDay.slice(0, targetCount);
+				// Remove these attractions from the global pool so they aren't double-counted
+				remainingAttractions = remainingAttractions.filter((attr) => !dayAttractions.find((used) => used._id.equals(attr._id)));
+			}
 
-			// Remove used attractions from remaining pool
-			remainingAttractions = remainingAttractions.filter((attr) => !dayAttractions.find((used) => used._id.equals(attr._id)));
+			// Check if we need to "top up" to reach 5
+			const needed = attractionsPerDay - dayAttractions.length;
+			if (needed > 0) {
+				// Get the best-ranked attractions from the remaining pool
+				const topUpAttractions = remainingAttractions.slice(0, needed);
+				dayAttractions = [...dayAttractions, ...topUpAttractions];
 
+				// Remove the topped-up attractions from the pool for the next day
+				remainingAttractions = remainingAttractions.slice(needed);
+			}
+
+			// Now, ensure we have exactly 5 (in case the cluster had > 5)
+			// and re-sort by ranking just in case
+			dayAttractions = dayAttractions.sort((a, b) => a.ranking - b.ranking).slice(0, attractionsPerDay);
+
+			// If we still have 0, stop
 			if (dayAttractions.length === 0) break;
 
-			// Split into morning (2-3) and evening (2)
-			const morningCount = Math.min(3, Math.max(2, Math.ceil(dayAttractions.length / 2)));
+			// Split into 3 morning and 2 evening
+			const morningCount = 3;
 
 			itinerary.push({
 				day: day + 1,
 				attractions: dayAttractions,
 				attractionCount: dayAttractions.length,
-				morning: dayAttractions.slice(0, morningCount),
-				evening: dayAttractions.slice(morningCount),
+				morning: dayAttractions.slice(0, morningCount), // First 3
+				evening: dayAttractions.slice(morningCount), // The rest (2)
 			});
 		}
+		// --- END UPDATED LOGIC ---
+
 		const newItinerary = new Itinerary({
 			user: req.user._id,
 			city,

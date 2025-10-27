@@ -72,11 +72,11 @@ const ItineraryPage = () => {
 			setLoading(true);
 			const location = startLocation + ", " + city;
 
-			const geoResponse = await fetch(`http://localhost:3000/api/geocode?location=${encodeURIComponent(location)}`);
+			const geoResponse = await fetch(`http://localhost:3001/api/geocode?location=${encodeURIComponent(location)}`);
 			const geoData = await geoResponse.json();
 			const { lat, lng } = geoData;
 
-			const response = await fetch("http://localhost:3000/api/itinerary/", {
+			const response = await fetch("http://localhost:3001/api/itinerary/", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -252,7 +252,7 @@ const ItineraryPage = () => {
 
 	const fetchTrafficData = async (originLat, originLng, destLat, destLng) => {
 		try {
-			const response = await fetch(`http://localhost:3000/api/location-info/temp?userLat=${originLat}&userLng=${originLng}&destLat=${destLat}&destLng=${destLng}`, {
+			const response = await fetch(`http://localhost:3001/api/location-info/temp?userLat=${originLat}&userLng=${originLng}&destLat=${destLat}&destLng=${destLng}`, {
 				credentials: "include",
 			});
 
@@ -315,7 +315,7 @@ const ItineraryPage = () => {
 
 	return (
 		<div>
-			<main className="max-w-4xl mx-auto px-4 py-8">
+			<main className="max-w-4xl mx-auto px-8 py-8 mt-8 bg-white rounded-xl overflow-hidden shadow-lg border border-[#DEE2E6]">
 				<h1 className="text-4xl font-bold text-gray-800 mb-4">{itineraryData.tripTitle}</h1>
 
 				<DayNavigation
