@@ -23,7 +23,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 	const [error, setError] = useState("");
 	const [showAll, setShowAll] = useState(false);
 
-
 	const getCoordinates = async () => {
 		if (!location.trim()) {
 			setError("Please enter a location");
@@ -37,7 +36,9 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 		setAttractions([]);
 
 		try {
-			const response = await axios.post(`${API_BASE_URL}/coordinates`, { location: location.trim() });
+			const response = await axios.get("http://localhost:3001/api/geocode", {
+				params: { location: location.trim() },
+			});
 			const { lat, lng } = response.data;
 			setCoordinates({ lat, lng });
 			await fetchAllData(lat, lng, radius);
@@ -55,12 +56,16 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 			const types = ["hotels", "restaurants", "attractions"];
 			const requests = types.map((type) =>
 				axios
-					.post(`${API_BASE_URL}/${type}`, {
-						lat,
-						lng,
-						radius: currentRadius,
-						city: location,
-					})
+					.post(
+						`http://localhost:3001/api/places/${type}`,
+						{
+							lat,
+							lng,
+							radius: currentRadius,
+							city: location,
+						},
+						{ withCredentials: true }
+					)
 					.catch((err) => {
 						console.error(`Failed to fetch ${type}:`, err);
 						return { data: {} };
