@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { forwardRef, useState } from "react";
 import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css"; // <-- ADDED THIS LINE
 
 const CustomDateInput = forwardRef(({ value, onClick, label, placeholder, icon }, ref) => (
 	<button
@@ -122,6 +123,12 @@ const ManualPlanPage = () => {
 										onChange={(e) => setDestination(e.target.value)}
 										placeholder="e.g., Jaipur, India"
 										type="text"
+										// ADDED: onKeyPress handler for "Enter" key
+										onKeyPress={(e) => {
+											if (e.key === "Enter" && destination) {
+												handleNext();
+											}
+										}}
 									/>
 								</div>
 								<button
@@ -166,6 +173,12 @@ const ManualPlanPage = () => {
 										onChange={(e) => setStartingPoint(e.target.value)}
 										placeholder="e.g., Jaipur Junction"
 										type="text"
+										// ADDED: onKeyPress handler for "Enter" key
+										onKeyPress={(e) => {
+											if (e.key === "Enter" && startingPoint) {
+												handleNext();
+											}
+										}}
 									/>
 								</div>
 								<div className="mt-6 flex justify-between items-center">
