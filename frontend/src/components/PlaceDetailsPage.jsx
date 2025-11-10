@@ -267,7 +267,8 @@ const PlaceDetailsPage = () => {
 			<div className="max-w-4xl mx-auto px-4">
 				<div className="flex items-center mb-8">
 					<button
-						onClick={() => navigate("/discover")}
+						// --- THIS IS THE FIX ---
+						onClick={() => navigate(-1)} // Changed from "/discover"
 						className="bg-white p-3 rounded-full shadow-md hover:shadow-lg text-[#212529] hover:text-[#FF6B35] transition-all flex items-center justify-center"
 					>
 						<svg
@@ -465,6 +466,7 @@ const PlaceDetailsPage = () => {
 							</div>
 						)}
 
+						{/* This is the fallback that is being rendered */}
 						{!locationInfo && (
 							<div className="md:col-span-2 bg-white rounded-2xl shadow-xl p-8 border border-[#DEE2E6] text-center">
 								<p className="text-gray-600">Unable to fetch additional traffic and weather information.</p>

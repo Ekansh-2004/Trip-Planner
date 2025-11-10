@@ -1,5 +1,9 @@
+// src/components/ProfilePage.jsx
+
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+// --- THIS IS THE FIX (Step 1) ---
+import { Link, useLocation } from "react-router-dom";
+// --- END OF FIX ---
 
 // Loading spinner for the trips tab
 const TripsSpinner = () => (
@@ -16,7 +20,13 @@ const formatDate = (dateString) => {
 };
 
 const ProfilePage = () => {
-	const [activeTab, setActiveTab] = useState("trips");
+	// --- THIS IS THE FIX (Step 2) ---
+	const location = useLocation();
+	// If state.defaultTab exists (from "My Trips"), use it.
+	// Otherwise (from User Logo), default to "about".
+	const [activeTab, setActiveTab] = useState(location.state?.defaultTab || "about");
+	// --- END OF FIX ---
+
 	const [user, setUser] = useState(null);
 	const [itineraries, setItineraries] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -43,113 +53,137 @@ const ProfilePage = () => {
 	}, []);
 
 	const getTabClass = (tabName) => {
-		const baseClasses = "border-b-2 px-1 py-4 text-sm font-bold transition-colors";
+		const baseClasses = "py-3 px-6 text-base font-semibold transition duration-200";
 		if (activeTab === tabName) {
-			return `${baseClasses} border-[#ec6d13] text-[#ec6d13]`;
+			return `${baseClasses} text-[#ef5006] border-b-2 border-[#ef5006]`;
 		}
-		return `${baseClasses} border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-800`;
+		return `${baseClasses} text-gray-500 hover:text-gray-800`;
 	};
 
 	return (
-		<div className="bg-[#f8f7f6] min-h-[calc(100vh-5rem)] py-8 font-display">
-			{/* Profile Header section */}
-			<div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-				<div className="flex flex-col items-center gap-6 pb-8 text-center">
-					{user ? (
-						<>
-							<div
-								className="relative size-32 rounded-full bg-cover bg-center shadow-lg border-4 border-white"
-								style={{ backgroundImage: `url(${user.profileImg || "./avatar.jpg"}` }}
-							></div>
-							<div>
-								<h2 className="text-3xl font-bold text-[#221810]">{user.fullName}</h2>
-								<p className="text-[#221810]/60">@{user.username}</p>
+		<div className="flex flex-col items-center bg-gray-50 min-h-[calc(100vh-5rem)] py-12 px-4 font-display">
+			{/* ======== PROFILE HEADER ======== */}
+			<div className="flex flex-col items-center mb-10">
+				{user ? (
+					<>
+						<div
+							className="relative w-28 h-28 rounded-full bg-cover bg-center"
+							style={{ backgroundImage: `url(${user.profileImg || "./avatar.jpg"})` }}
+						></div>
+						<h1 className="text-3xl font-extrabold text-gray-900 mt-4 mb-1">{user.fullName}</h1>
+						<p className="text-gray-500 text-sm mb-6">@{user.username}</p>
+					</>
+				) : (
+					<div className="animate-pulse flex flex-col items-center">
+						<div className="w-28 h-28 rounded-full bg-gray-300"></div>
+						<div className="h-8 w-48 bg-gray-300 rounded mt-4 mb-1"></div>
+						<div className="h-5 w-32 bg-gray-300 rounded mb-6"></div>
+					</div>
+				)}
+				<button className="px-5 py-2 bg-gray-100 text-gray-700 font-semibold text-sm rounded-lg hover:bg-gray-200 transition duration-200">Edit Profile</button>
+			</div>
+
+			{/* ======== TABS NAVIGATION ======== */}
+			<div className="flex justify-center border-b border-gray-200 w-full max-w-xl mb-8">
+				<button
+					className={getTabClass("about")}
+					onClick={() => setActiveTab("about")}
+				>
+					About
+				</button>
+				<button
+					className={getTabClass("trips")}
+					onClick={() => setActiveTab("trips")}
+				>
+					Trips
+				</button>
+				<button
+					className={getTabClass("saved")}
+					onClick={() => setActiveTab("saved")}
+				>
+					Saved
+				</button>
+			</div>
+
+			{/* ======== TAB CONTENT ======== */}
+			<div className="w-full max-w-xl">
+				{/* --- About Tab --- */}
+				{activeTab === "about" && (
+					<div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
+						<h2 className="text-xl font-bold text-gray-900 mb-5">About</h2>
+						{user ? (
+							<div className="space-y-1">
+								<div className="flex items-center py-3 border-b border-gray-100">
+									<p className="w-1/3 text-gray-500 text-sm">Username</p>
+									<p className="w-2/3 text-gray-800 font-semibold">@{user.username}</p>
+								</div>
+								<div className="flex items-center py-3 border-b border-gray-100">
+									<p className="w-1/3 text-gray-500 text-sm">Full Name</p>
+									<p className="w-2/3 text-gray-800 font-semibold">{user.fullName}</p>
+								</div>
+								<div className="flex items-center py-3">
+									<p className="w-1/3 text-gray-500 text-sm">Email</p>
+									<p className="w-2/3 text-gray-800 font-semibold">{user.email}</p>
+								</div>
 							</div>
-						</>
-					) : (
-						<div className="h-44 animate-pulse flex flex-col items-center gap-6">
-							<div className="size-32 rounded-full bg-gray-300"></div>
-							<div className="h-8 w-48 bg-gray-300 rounded"></div>
-						</div>
-					)}
-					<button className="rounded-lg bg-gray-100 px-6 py-2 text-sm font-bold text-[#221810] transition-colors hover:bg-gray-200">Edit Profile</button>
-				</div>
-			</div>
+						) : (
+							<p>Loading user data...</p>
+						)}
+					</div>
+				)}
 
-			{/* Tab Navigation section */}
-			<div className="border-b border-gray-200">
-				<nav className="-mb-px flex justify-center space-x-8">
-					<button
-						onClick={() => setActiveTab("trips")}
-						className={getTabClass("trips")}
-					>
-						My Trips
-					</button>
-					<button
-						onClick={() => setActiveTab("about")}
-						className={getTabClass("about")}
-					>
-						About
-					</button>
-					<button
-						onClick={() => setActiveTab("saved")}
-						className={getTabClass("saved")}
-					>
-						Saved Places
-					</button>
-				</nav>
-			</div>
-
-			{/* Tab Content section */}
-			<div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-				<div className="py-10">
-					{/* ... (About and Saved tabs remain the same) ... */}
-
-					{activeTab === "trips" && (
-						<section className="space-y-8">
-							<h3 className="px-4 text-xl font-bold text-[#221810]">My Trip History</h3>
-							{loading && <TripsSpinner />}
-							{error && <p className="text-center text-red-500">{error}</p>}
-							{!loading && !error && (
-								<>
-									{itineraries.length > 0 ? (
-										<div className="grid gap-8 md:grid-cols-2">
-											{itineraries.map((itinerary) => (
-												<div
-													key={itinerary._id}
-													className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 overflow-hidden"
-												>
-													<div className="p-6">
-														<p className="text-sm font-semibold text-[#ec6d13] mb-2">{formatDate(itinerary.createdAt)}</p>
-														<h3 className="text-2xl font-bold text-gray-800 mb-2">{itinerary.city}</h3>
-														<p className="text-gray-600 mb-4">{itinerary.days} Day Trip</p>
-														<Link
-															to="/itinerary"
-															state={{ itineraryData: itinerary }} // Pass the whole itinerary object
-															className="inline-block bg-[#ec6d13] text-white font-bold px-6 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
-														>
-															View Itinerary
-														</Link>
-													</div>
-												</div>
-											))}
-										</div>
-									) : (
-										<div className="text-center py-12 bg-white rounded-xl shadow-md">
-											<p className="text-gray-600">You haven't planned any trips yet.</p>
-											<Link
-												to="/manual-plan"
-												className="mt-4 inline-block bg-[#ec6d13] text-white font-bold px-6 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
+				{/* --- Trips Tab --- */}
+				{activeTab === "trips" && (
+					<div className="space-y-6">
+						{loading && <TripsSpinner />}
+						{error && <p className="text-center text-red-500">{error}</p>}
+						{!loading && !error && (
+							<>
+								{itineraries.length > 0 ? (
+									<div className="grid grid-cols-1 gap-6">
+										{itineraries.map((itinerary) => (
+											<div
+												key={itinerary._id}
+												className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 overflow-hidden border border-gray-200/80"
 											>
-												Plan a New Trip
-											</Link>
-										</div>
-									)}
-								</>
-							)}
-						</section>
-					)}
-				</div>
+												<div className="p-6">
+													<p className="text-sm font-semibold text-[#ec6d13] mb-2">{formatDate(itinerary.createdAt)}</p>
+													<h3 className="text-2xl font-bold text-gray-800 mb-2">{itinerary.city}</h3>
+													<p className="text-gray-600 mb-4">{itinerary.days} Day Trip</p>
+													<Link
+														to="/itinerary"
+														state={{ itineraryData: itinerary }}
+														className="inline-block bg-[#ec6d13] text-white font-bold px-6 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
+													>
+														View Itinerary
+													</Link>
+												</div>
+											</div>
+										))}
+									</div>
+								) : (
+									<div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200/80">
+										<p className="text-gray-600">You haven't planned any trips yet.</p>
+										<Link
+											to="/manual-plan"
+											className="mt-4 inline-block bg-[#ec6d13] text-white font-bold px-6 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
+										>
+											Plan a New Trip
+										</Link>
+									</div>
+								)}
+							</>
+						)}
+					</div>
+				)}
+
+				{/* --- Saved Tab --- */}
+				{activeTab === "saved" && (
+					<div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6 text-center">
+						<h2 className="text-xl font-bold text-gray-900 mb-5">Saved Places</h2>
+						<p className="text-gray-600">No saved places found. Discover new destinations!</p>
+					</div>
+				)}
 			</div>
 		</div>
 	);

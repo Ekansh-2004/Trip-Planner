@@ -266,12 +266,12 @@ export const generateItinerary = async (req, res) => {
 			// Add all attractions from the *final* sorted list to the used Set
 			// This ensures they cannot be picked again by the cluster or top-up logic
 			sortedDayAttractions.forEach((attr) => usedAttractionIds.add(attr._id.toString()));
-
+			const attractionIds = sortedDayAttractions.map((a) => a._id);
 			// 6. Push the final, sorted day plan
 			const morningCount = 3;
 			itinerary.push({
 				day: day + 1,
-				attractions: sortedDayAttractions,
+				attractions: attractionIds,
 				attractionCount: sortedDayAttractions.length,
 				morning: sortedDayAttractions.slice(0, morningCount),
 				evening: sortedDayAttractions.slice(morningCount),

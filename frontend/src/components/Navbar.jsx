@@ -1,3 +1,5 @@
+// src/components/Navbar.jsx
+
 import { Link, NavLink } from "react-router-dom";
 
 const Navbar = ({ authUser, onLogout }) => {
@@ -60,12 +62,17 @@ const Navbar = ({ authUser, onLogout }) => {
 						>
 							Discover
 						</NavLink>
+
+						{/* --- THIS IS THE FIX --- */}
 						<NavLink
-							to="/itinerary"
+							to="/profile"
+							// This state tells the profile page to open the "trips" tab
+							state={{ defaultTab: "trips" }}
 							className={getLinkClass}
 						>
 							My Trips
 						</NavLink>
+						{/* --- END OF FIX --- */}
 					</nav>
 
 					{/* Right Side Actions */}
@@ -76,6 +83,7 @@ const Navbar = ({ authUser, onLogout }) => {
 
 						{authUser ? (
 							<>
+								{/* This link has no state, so it defaults to "About" */}
 								<Link to="/profile">
 									<div
 										className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 border-2 border-[#FF6B35]"
