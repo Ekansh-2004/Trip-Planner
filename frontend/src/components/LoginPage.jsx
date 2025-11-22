@@ -5,7 +5,7 @@ const LoginPage = ({ onLogin }) => {
 	const [error, setError] = useState(null);
 	const [loading, setLoading] = useState(false);
 
-	// Unified state for all form inputs
+
 	const [formData, setFormData] = useState({
 		fullName: "",
 		username: "",
@@ -14,13 +14,11 @@ const LoginPage = ({ onLogin }) => {
 		confirmPassword: "",
 	});
 
-	// Single handler for all input changes
 	const handleInputChange = (e) => {
-		setError(null); // Clear previous errors on new input
+		setError(null); 
 		setFormData({ ...formData, [e.target.name]: e.target.value });
 	};
 
-	// Handler for the login form submission
 	const handleLoginSubmit = async (e) => {
 		e.preventDefault();
 		setLoading(true);
@@ -45,7 +43,6 @@ const LoginPage = ({ onLogin }) => {
 		}
 	};
 
-	// Handler for the signup form submission
 	const handleSignupSubmit = async (e) => {
 		e.preventDefault();
 		if (formData.password !== formData.confirmPassword) {
@@ -97,7 +94,7 @@ const LoginPage = ({ onLogin }) => {
 			<header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-[#DEE2E6]">
 				<nav className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
 					<div className="flex items-center gap-3">
-						<div className="size-10 text-[#FF6B35]">{/* SVG Icon */}</div>
+						<div className="size-10 text-[#FF6B35]"></div>
 						<h1 className="text-2xl font-bold leading-tight text-[#FF6B35]">Trip Sage</h1>
 					</div>
 					<button className="px-4 py-2 rounded-lg text-sm font-bold bg-[#fa7938]/10 text-[#fa7938] hover:bg-[#fa7938]/20 transition-colors">Help</button>
@@ -271,7 +268,7 @@ const LoginPage = ({ onLogin }) => {
 							</div>
 						</div>
 
-						<div className="mt-6 grid grid-cols-2 gap-3">{/* Social Login Buttons */}</div>
+						<div className="mt-6 grid grid-cols-2 gap-3"></div>
 					</div>
 				</div>
 			</main>

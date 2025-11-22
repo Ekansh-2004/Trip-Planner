@@ -1,13 +1,13 @@
 // src/components/LocationSearch.jsx
 
 import axios from "axios";
-import { useState } from "react"; // Keep useState for local state like loading, error, etc.
+import { useState } from "react"; 
 import EmptyState from "./EmptyState";
 import LoadingSpinner from "./LoadingSpinner";
 import PlaceCard from "./PlaceCard";
 
 const calculateDistance = (lat1, lng1, lat2, lng2) => {
-	const R = 6371; // Radius of the Earth in kilometers
+	const R = 6371; 
 	const dLat = ((lat2 - lat1) * Math.PI) / 180;
 	const dLng = ((lng2 - lng1) * Math.PI) / 180;
 	const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
@@ -15,9 +15,8 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
 	return R * c;
 };
 
-// Destructure all the props coming from App.js
+
 const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, radius, setRadius, hotels, setHotels, restaurants, setRestaurants, attractions, setAttractions }) => {
-	// State that is local to this component remains here
 	const [activeTab, setActiveTab] = useState("hotels");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
@@ -30,7 +29,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 		}
 		setLoading(true);
 		setError("");
-		// Clear previous results using the passed-in setters
 		setHotels([]);
 		setRestaurants([]);
 		setAttractions([]);
@@ -89,7 +87,7 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 				distance: calculateDistance(lat, lng, place.latitude, place.longitude).toFixed(2),
 			}));
 
-			// Use the passed-in setters to update the global state in App.js
+
 			setHotels(hotelResults);
 			setRestaurants(restaurantResults);
 			setAttractions(attractionResults);
@@ -102,7 +100,7 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 	};
 
 	const handleRadiusChange = (newRadius) => {
-		// Use the passed-in setter for radius
+
 		setRadius(newRadius);
 		if (coordinates) {
 			fetchAllData(coordinates.lat, coordinates.lng, newRadius);
@@ -125,8 +123,7 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-8">
-			{/* The rest of your JSX remains exactly the same */}
-			{/* ... (Explore Nearby, Search Form, Conditional Display) ... */}
+
 
 			<div className="text-center mb-12">
 				<h1 className="text-5xl sm:text-6xl font-extrabold text-[#212529] tracking-tight">Explore Nearby</h1>
@@ -213,7 +210,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 				<div className="space-y-6">
 					<div className="flex justify-center items-center gap-4">
 						{Object.keys(tabDetails).map((key) => (
-							// 👇 THIS IS THE BUTTON YOU NEED TO REPLACE 👇
 							<button
 								key={key}
 								type="button"
@@ -237,7 +233,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 							>
 								<span>{showAll ? "Show Less" : "View All"}</span>
 								{showAll ? (
-									// Up arrow icon (for "Show Less")
 									<svg
 										className="w-5 h-5"
 										fill="none"
@@ -252,7 +247,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 										/>
 									</svg>
 								) : (
-									// Down arrow icon (for "View All")
 									<svg
 										className="w-5 h-5"
 										fill="none"

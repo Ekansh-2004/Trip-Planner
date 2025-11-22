@@ -11,7 +11,6 @@ const DetailsSpinner = () => (
 	</div>
 );
 
-// Helper function to get reliable weather icons
 const getWeatherIcon = (condition) => {
 	const iconProps = {
 		className: "w-24 h-24 text-gray-700",
@@ -105,7 +104,7 @@ const getWeatherIcon = (condition) => {
 			</svg>
 		);
 	}
-	// Default icon
+
 	return (
 		<svg
 			{...iconProps}
@@ -150,7 +149,7 @@ const PlaceDetailsPage = () => {
 				destLng: place.longitude,
 			};
 
-			const response = await axios.get(`${API_BASE_URL}/${place.placeId}`, { params });
+			const response = await axios.get(`${API_BASE_URL}/${place.placeId}`, { params, withCredentials: true });
 
 			if (response.data.success) {
 				setLocationInfo(response.data.data);
@@ -162,7 +161,6 @@ const PlaceDetailsPage = () => {
 		}
 	};
 
-	// UPDATED: getTypeIcon with new SVG icons
 	const getTypeIcon = () => {
 		const iconProps = { className: "w-8 h-8", strokeWidth: 2 };
 		switch (type) {
@@ -267,8 +265,7 @@ const PlaceDetailsPage = () => {
 			<div className="max-w-4xl mx-auto px-4">
 				<div className="flex items-center mb-8">
 					<button
-						// --- THIS IS THE FIX ---
-						onClick={() => navigate(-1)} // Changed from "/discover"
+						onClick={() => navigate(-1)}
 						className="bg-white p-3 rounded-full shadow-md hover:shadow-lg text-[#212529] hover:text-[#FF6B35] transition-all flex items-center justify-center"
 					>
 						<svg
@@ -360,7 +357,6 @@ const PlaceDetailsPage = () => {
 					<div className="grid md:grid-cols-2 gap-8">
 						{locationInfo?.traffic && (
 							<div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-[#DEE2E6]">
-								{/* UPDATED: Traffic Icon */}
 								<h3 className="text-2xl font-bold text-[#212529] mb-6 flex items-center gap-3">
 									<svg
 										className="w-7 h-7 text-[#FF6B35]"
@@ -396,7 +392,6 @@ const PlaceDetailsPage = () => {
 
 						{locationInfo?.weather && (
 							<div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-[#DEE2E6]">
-								{/* UPDATED: Weather Icon */}
 								<h3 className="text-2xl font-bold text-[#212529] mb-6 flex items-center gap-3">
 									<svg
 										className="w-7 h-7 text-[#FF6B35]"
@@ -466,7 +461,6 @@ const PlaceDetailsPage = () => {
 							</div>
 						)}
 
-						{/* This is the fallback that is being rendered */}
 						{!locationInfo && (
 							<div className="md:col-span-2 bg-white rounded-2xl shadow-xl p-8 border border-[#DEE2E6] text-center">
 								<p className="text-gray-600">Unable to fetch additional traffic and weather information.</p>

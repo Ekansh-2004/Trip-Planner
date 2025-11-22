@@ -1,10 +1,10 @@
 // src/components/ManualPlanPage.jsx
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { forwardRef, useState } from "react";
 import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css"; // <-- ADDED THIS LINE
+import "react-datepicker/dist/react-datepicker.css";
 
 const CustomDateInput = forwardRef(({ value, onClick, label, placeholder, icon }, ref) => (
 	<button
@@ -24,8 +24,12 @@ const CustomDateInput = forwardRef(({ value, onClick, label, placeholder, icon }
 ));
 
 const ManualPlanPage = () => {
+	const navigate = useNavigate();
+	const location = useLocation();
+	const destinationFromNLP = location.state?.destination || "";
 	const [step, setStep] = useState(1);
-	const [destination, setDestination] = useState("");
+	const [destination, setDestination] = useState(destinationFromNLP);
+
 	const [startingPoint, setStartingPoint] = useState("");
 	const [startDate, setStartDate] = useState(null);
 	const [endDate, setEndDate] = useState(null);
@@ -55,8 +59,6 @@ const ManualPlanPage = () => {
 		stroke: "currentColor",
 	};
 
-	const navigate = useNavigate();
-
 	const handleCreateItinerary = () => {
 		navigate("/itinerary", {
 			state: {
@@ -83,7 +85,6 @@ const ManualPlanPage = () => {
 					</div>
 				</div>
 
-				{/* MODIFIED: Height of the content box is now h-80 */}
 				<div className="relative h-80">
 					<AnimatePresence mode="wait">
 						{step === 1 && (
@@ -116,14 +117,13 @@ const ManualPlanPage = () => {
 											/>
 										</svg>
 									</div>
-									{/* MODIFIED: Input height is now h-14 */}
 									<input
 										className="w-full h-14 rounded-xl border-gray-300 bg-gray-50/80 placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ef5006] focus:border-transparent pl-16 pr-6 text-lg transition"
 										value={destination}
 										onChange={(e) => setDestination(e.target.value)}
 										placeholder="e.g., Jaipur, India"
 										type="text"
-										// ADDED: onKeyPress handler for "Enter" key
+
 										onKeyPress={(e) => {
 											if (e.key === "Enter" && destination) {
 												handleNext();
@@ -166,14 +166,14 @@ const ManualPlanPage = () => {
 											/>
 										</svg>
 									</div>
-									{/* MODIFIED: Input height is now h-14 */}
+
 									<input
 										className="w-full h-14 rounded-xl border-gray-300 bg-gray-50/80 placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ef5006] focus:border-transparent pl-16 pr-6 text-lg transition"
 										value={startingPoint}
 										onChange={(e) => setStartingPoint(e.target.value)}
 										placeholder="e.g., Jaipur Junction"
 										type="text"
-										// ADDED: onKeyPress handler for "Enter" key
+
 										onKeyPress={(e) => {
 											if (e.key === "Enter" && startingPoint) {
 												handleNext();

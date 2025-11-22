@@ -3,10 +3,6 @@ import User from "../models/User.js";
 import { generateTokenAndSetCookie } from "../utils/generateToken.js";
 
 //SIGN UP FUNCTION
-// 1. Check the validity of username , password and email
-// 2. Hash the password
-// 3. Create the User in db and save it
-// 4. Create token and save it to cookie
 export const signup = async (req, res) => {
 	try {
 		const { fullName, username, email, password } = req.body;
@@ -89,10 +85,17 @@ export const login = async (req, res) => {
 // LOG OUT FUNCTION
 export const logout = async (req, res) => {
 	try {
-		res.cookie("jwt", "", { maxAge: 0 });
-		res.status(200).json({ message: "Logout Out successfully" });
+		res.clearCookie("jwt", {
+			httpOnly: true,
+			secure: false,
+			sameSite: "lax",
+			path: "/",
+		});
+
+		return res.status(200).json({ message: "Logged out" });
 	} catch (error) {
-		res.status(500).json({ error: "Internal Server Error" });
+		console.log("Logout error:", error);
+		return res.status(500).json({ error: "Internal Server Error" });
 	}
 };
 

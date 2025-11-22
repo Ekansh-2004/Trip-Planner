@@ -8,6 +8,8 @@ import authRoutes from "./routes/authRoute.js";
 import itineraryRoutes from "./routes/itineraryRoute.js";
 import weatherTrafficRoutes from "./routes/locationInfoRoute.js";
 import placeRoutes from "./routes/placeRoute.js";
+import nlpRoutes from "./routes/nlpRoute.js"
+import cultureRoutes from "./routes/cultureRoute.js";
 
 import axios from "axios";
 import { connectDB } from "./config/db.js";
@@ -30,6 +32,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/places", placeRoutes);
 app.use("/api/location-info", weatherTrafficRoutes);
 app.use("/api/itinerary", itineraryRoutes);
+app.use("/api/nlp", nlpRoutes);
+app.use("/api/culture", cultureRoutes);
 
 app.get("/api/geocode", async (req, res) => {
 	try {

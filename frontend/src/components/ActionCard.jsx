@@ -1,6 +1,5 @@
 // src/components/ActionCard.jsx
 
-// Now accepts an 'onClick' prop
 export const ActionCard = ({ title, subtitle, buttonText, onClick }) => {
 	return (
 		<div className="relative mb-6">
@@ -11,7 +10,7 @@ export const ActionCard = ({ title, subtitle, buttonText, onClick }) => {
 					<p className="text-sm text-orange-600">{subtitle}</p>
 				</div>
 				<button
-					onClick={onClick} // <-- THIS LINE IS THE FIX
+					onClick={onClick} 
 					className="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors flex-shrink-0"
 				>
 					{buttonText}

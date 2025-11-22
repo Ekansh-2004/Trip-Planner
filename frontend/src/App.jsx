@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation } from "react-router-dom";
 
-// Import Components
 import HomePage from "./components/HomePage";
 import ItineraryPage from "./components/ItineraryPage";
 import LoadingSpinner from "./components/LoadingSpinner.jsx";
@@ -9,10 +8,10 @@ import LocationSearch from "./components/LocationSearch";
 import LoginPage from "./components/LoginPage";
 import ManualPlanPage from "./components/ManualPlanPage";
 import Navbar from "./components/Navbar";
+import NLPPlanPage from "./components/NLPPlanPage";
 import PlaceDetailsPage from "./components/PlaceDetailsPage";
 import ProfilePage from "./components/ProfilePage";
 
-// Reusable Layout Component - Updated to accept authUser
 const AppLayout = ({ authUser, onLogout }) => {
 	const location = useLocation();
 
@@ -20,7 +19,7 @@ const AppLayout = ({ authUser, onLogout }) => {
 		const path = location.pathname;
 		if (path.startsWith("/profile")) return { backgroundImage: `url('/ProfileBG.png')`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" };
 		if (path === "/") return { backgroundImage: `url('/HomeBG3.jpg')`, backgroundSize: "cover", backgroundPosition: "center 10%" };
-		if (path.startsWith("/discover") || path.startsWith("/itinerary") || path.startsWith("/manual-plan")) return { backgroundImage: `url('/DiscoverBG.png')`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" };
+		if (path.startsWith("/discover") || path.startsWith("/itinerary") || path.startsWith("/nlp-plan") || path.startsWith("/manual-plan") || path.startsWith("/place")) return { backgroundImage: `url('/DiscoverBG.png')`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" };
 		return { backgroundColor: "#f9fafb" };
 	};
 
@@ -29,7 +28,6 @@ const AppLayout = ({ authUser, onLogout }) => {
 			className="min-h-screen"
 			style={getPageStyle()}
 		>
-			{/* Navbar now receives the authUser prop */}
 			<Navbar
 				authUser={authUser}
 				onLogout={onLogout}
@@ -41,21 +39,21 @@ const AppLayout = ({ authUser, onLogout }) => {
 	);
 };
 
-// Main App Component
 function App() {
 	const [authUser, setAuthUser] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	// Check if the user is already logged in on initial load
 	useEffect(() => {
 		const checkAuthStatus = async () => {
 			try {
-				const res = await fetch("http://localhost:3001/api/auth/me", { credentials: "include" });
+				const res = await fetch("http://localhost:3001/api/auth/me", {
+					credentials: "include",
+				});
 
-				const data = await res.json();
-				if (data.error) {
+				if (!res.ok) {
 					setAuthUser(null);
 				} else {
+					const data = await res.json();
 					setAuthUser(data);
 				}
 			} catch (error) {
@@ -73,14 +71,16 @@ function App() {
 
 	const handleLogout = async () => {
 		try {
-			await fetch("http://localhost:3001/api/auth/logout", { method: "POST" });
+			await fetch("http://localhost:3001/api/auth/logout", {
+				method: "POST",
+				credentials: "include",
+			});
 			setAuthUser(null);
 		} catch (error) {
 			console.error("Logout failed:", error);
 		}
 	};
 
-	// Shared search context for Discover Page (remains the same)
 	const [location, setLocation] = useState("");
 	const [coordinates, setCoordinates] = useState(null);
 	const [radius, setRadius] = useState(2000);
@@ -116,7 +116,7 @@ function App() {
 							path="/login"
 							element={<LoginPage onLogin={handleLogin} />}
 						/>
-						{/* Redirect everything except /login to /login */}
+
 						<Route
 							path="*"
 							element={
@@ -147,6 +147,10 @@ function App() {
 						<Route
 							path="/manual-plan"
 							element={<ManualPlanPage />}
+						/>
+						<Route
+							path="/nlp-plan"
+							element={<NLPPlanPage />}
 						/>
 						<Route
 							path="/place/:id"

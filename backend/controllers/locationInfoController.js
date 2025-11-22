@@ -12,7 +12,7 @@ export const getCombinedLocationInfo = async (req, res) => {
 			});
 		}
 
-		// Parallel API calls for better performance
+
 		const [weatherResponse, trafficResponse] = await Promise.allSettled([
 			axios.get("https://weather.googleapis.com/v1/currentConditions:lookup", {
 				params: {
@@ -23,7 +23,7 @@ export const getCombinedLocationInfo = async (req, res) => {
 				},
 			}),
 
-			// Google Traffic API
+
 			axios.get("https://maps.googleapis.com/maps/api/distancematrix/json", {
 				params: {
 					origins: `${userLat},${userLng}`,
@@ -42,7 +42,7 @@ export const getCombinedLocationInfo = async (req, res) => {
 			traffic: null,
 		};
 
-		// Process weather data
+
 		if (weatherResponse.status === "fulfilled") {
 			const weather = weatherResponse.value.data;
 			result.weather = {
@@ -58,7 +58,7 @@ export const getCombinedLocationInfo = async (req, res) => {
 			console.error("Weather API failed:", weatherResponse.reason?.message);
 		}
 
-		// Process traffic data
+
 		if (trafficResponse.status === "fulfilled") {
 			const element = trafficResponse.value.data.rows[0]?.elements[0];
 			if (element && element.status === "OK") {
@@ -92,7 +92,7 @@ export const getCombinedLocationInfo = async (req, res) => {
 	}
 };
 
-// Helper function
+
 const getTrafficCondition = (delayMinutes) => {
 	if (delayMinutes < 5) return "light";
 	if (delayMinutes < 15) return "moderate";

@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// Step 1: Convert location name to lat/lng
 export const getCoordinates = async (req, res) => {
 	try {
 		const { location } = req.body;
@@ -99,7 +98,7 @@ export const getNearbyRestaurants = async (req, res) => {
 						: [],
 				}));
 
-				// Sort by rating
+
 				const sortedRestaurants = restaurants.sort((a, b) => {
 					if (a.rating === "N/A" && b.rating === "N/A") return b.userRatingsTotal - a.userRatingsTotal;
 					if (a.rating === "N/A") return 1;
@@ -156,7 +155,7 @@ export const getNearbyRestaurants = async (req, res) => {
 			placeId: place.id || null,
 		}));
 
-		// Sort by rating
+
 		const sortedRestaurants = restaurants.sort((a, b) => {
 			if (a.rating === "N/A" && b.rating === "N/A") return 0;
 			if (a.rating === "N/A") return 1;
@@ -180,7 +179,7 @@ export const getNearbyRestaurants = async (req, res) => {
 
 export const getAllAttractions = async (req, res) => {
 	try {
-		// Handle both undefined and empty body
+
 		if (!req.body || Object.keys(req.body).length === 0) {
 			return res.status(400).json({
 				error: "Request body is required",
@@ -190,7 +189,7 @@ export const getAllAttractions = async (req, res) => {
 
 		const { lat, lng, radius, city } = req.body;
 
-		// Validate required fields
+
 		if (!lat || !lng) {
 			return res.status(400).json({
 				error: "Missing required fields: lat and lng",
@@ -199,10 +198,10 @@ export const getAllAttractions = async (req, res) => {
 
 		let allAttractions = [];
 
-		// Use Legacy API (more reliable) instead of New API v1
+
 		const attractionTypes = ["museum", "park", "church", "hindu_temple", "stadium", "zoo", "amusement_park"];
 
-		// Fetch using Legacy Places API (more stable)
+
 		for (const type of attractionTypes) {
 			try {
 				const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${process.env.GOOGLE_API_KEY}`;
@@ -232,36 +231,31 @@ export const getAllAttractions = async (req, res) => {
 					allAttractions = [...allAttractions, ...typeAttractions];
 				}
 
-				// Small delay to avoid hitting rate limits
 				await new Promise((resolve) => setTimeout(resolve, 200));
 			} catch (typeError) {
 				console.error(`Error fetching ${type}:`, typeError.message);
-				// Continue with other types
 			}
 		}
 
-		// Remove duplicates by placeId
 		const uniqueAttractions = [...new Map(allAttractions.map((a) => [a.placeId, a])).values()];
 
-		// Sort by rating + popularity
 		const sortedByRating = uniqueAttractions.sort((a, b) => {
-			// Handle "N/A" ratings - put them at the end
 			if (a.rating === "N/A" && b.rating === "N/A") {
-				return b.userRatingsTotal - a.userRatingsTotal; // Sort by review count
+				return b.userRatingsTotal - a.userRatingsTotal; 
 			}
-			if (a.rating === "N/A") return 1; // Put N/A ratings at end
-			if (b.rating === "N/A") return -1; // Keep rated items first
+			if (a.rating === "N/A") return 1; 
+			if (b.rating === "N/A") return -1; 
 
-			// Primary sort: by rating (highest first)
+			
 			if (b.rating !== a.rating) {
 				return b.rating - a.rating;
 			}
 
-			// Secondary sort: by number of reviews (most reviewed first)
+			
 			return b.userRatingsTotal - a.userRatingsTotal;
 		});
 
-		// Filter out very low-rated places
+
 		const quality = sortedByRating.filter((a) => a.rating === "N/A" || a.rating >= 3.5);
 
 		res.json({

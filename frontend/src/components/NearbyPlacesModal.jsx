@@ -49,23 +49,20 @@ const NearbyPlacesModal = ({ type, lat, lng, city, userLocation, onClose }) => {
 		fetchData();
 	}, [type, lat, lng, city]);
 
-	// ==========================================================
-	// --- SCROLL FIX ---
-	// This function now saves the scroll position before navigating
-	// ==========================================================
+
 	const handleMoreDetails = (place) => {
-		// 1. Save the current scroll position of the main window
+
 		sessionStorage.setItem("itineraryScrollPos", window.scrollY);
 
-		// 2. Navigate to the details page
+
 		navigate(`/place/${place.placeId || Date.now()}`, {
 			state: {
 				place,
 				type,
-				userLocation, // This is the attraction's location
+				userLocation, 
 			},
 		});
-		onClose(); // Close the modal after navigating
+		onClose(); 
 	};
 
 	const title = type === "hotels" ? "Nearby Hotels" : "Nearby Restaurants";
@@ -78,7 +75,7 @@ const NearbyPlacesModal = ({ type, lat, lng, city, userLocation, onClose }) => {
 		>
 			{/* Modal Content */}
 			<div
-				onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+				onClick={(e) => e.stopPropagation()} 
 				className="bg-white rounded-2xl shadow-2xl w-[90%] sm:w-[80%] md:w-[60%] lg:w-[40%] max-w-xl max-h-[80vh] flex flex-col"
 			>
 				{/* Header */}

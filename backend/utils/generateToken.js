@@ -5,9 +5,9 @@ export const generateTokenAndSetCookie = (userId, res) => {
 
 	res.cookie("jwt", token, {
 		httpOnly: true,
-		secure: false, // true only in production (https)
-		sameSite: "lax", // important for localhost
+		secure: false, 
+		sameSite: "lax", 
 		path: "/",
-		maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+		maxAge: 7 * 24 * 60 * 60 * 1000, 
 	});
 };

@@ -12,7 +12,6 @@ const Navbar = ({ authUser, onLogout }) => {
 		<header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-[#DEE2E6]">
 			<div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div className="flex items-center justify-between h-20">
-					{/* Logo and Brand Name */}
 					<Link
 						to="/"
 						className="flex items-center gap-3"
@@ -47,7 +46,6 @@ const Navbar = ({ authUser, onLogout }) => {
 						<h2 className="text-2xl font-bold leading-tight text-[#FF6B35]">Trip Sage</h2>
 					</Link>
 
-					{/* Navigation Links */}
 					<nav className="hidden md:flex items-center gap-8">
 						<NavLink
 							to="/"
@@ -63,19 +61,15 @@ const Navbar = ({ authUser, onLogout }) => {
 							Discover
 						</NavLink>
 
-						{/* --- THIS IS THE FIX --- */}
 						<NavLink
 							to="/profile"
-							// This state tells the profile page to open the "trips" tab
 							state={{ defaultTab: "trips" }}
 							className={getLinkClass}
 						>
 							My Trips
 						</NavLink>
-						{/* --- END OF FIX --- */}
 					</nav>
 
-					{/* Right Side Actions */}
 					<div className="flex items-center gap-4">
 						<button className="md:hidden flex items-center justify-center rounded-full h-10 w-10 text-[#FF6B35]">
 							<span className="material-symbols-outlined">menu</span>
@@ -83,7 +77,6 @@ const Navbar = ({ authUser, onLogout }) => {
 
 						{authUser ? (
 							<>
-								{/* This link has no state, so it defaults to "About" */}
 								<Link to="/profile">
 									<div
 										className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 border-2 border-[#FF6B35]"

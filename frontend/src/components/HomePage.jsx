@@ -30,7 +30,7 @@ const HomePage = () => {
 				</Link>
 
 				<Link
-					to="#"
+					to="/nlp-plan"
 					className="group block p-8 rounded-xl bg-black/15 backdrop-blur-md border border-white/30 shadow-xl transition-all duration-300 transform hover:-translate-y-2 hover:bg-black/25 hover:shadow-2xl hover:shadow-primary/30 hover:border-primary/50"
 				>
 					<h3 className="text-2xl font-bold text-white [text-shadow:0_1px_3px_rgb(0_0_0_/_0.4)]">Describe Destination</h3>

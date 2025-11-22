@@ -1,18 +1,14 @@
-// src/components/ProfilePage.jsx
+
 
 import { useEffect, useState } from "react";
-// --- THIS IS THE FIX (Step 1) ---
 import { Link, useLocation } from "react-router-dom";
-// --- END OF FIX ---
 
-// Loading spinner for the trips tab
 const TripsSpinner = () => (
 	<div className="flex justify-center items-center py-8">
 		<div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-[#ec6d13]"></div>
 	</div>
 );
 
-// Formats a date string into a more readable format, e.g., "October 2025"
 const formatDate = (dateString) => {
 	if (!dateString) return "Date not set";
 	const options = { year: "numeric", month: "long" };
@@ -20,12 +16,8 @@ const formatDate = (dateString) => {
 };
 
 const ProfilePage = () => {
-	// --- THIS IS THE FIX (Step 2) ---
 	const location = useLocation();
-	// If state.defaultTab exists (from "My Trips"), use it.
-	// Otherwise (from User Logo), default to "about".
 	const [activeTab, setActiveTab] = useState(location.state?.defaultTab || "about");
-	// --- END OF FIX ---
 
 	const [user, setUser] = useState(null);
 	const [itineraries, setItineraries] = useState([]);
@@ -60,9 +52,31 @@ const ProfilePage = () => {
 		return `${baseClasses} text-gray-500 hover:text-gray-800`;
 	};
 
+	const handleDelete = async (itineraryId) => {
+		const confirmDelete = window.confirm("Are you sure you want to delete this itinerary?");
+		if (!confirmDelete) return;
+
+		try {
+			const response = await fetch(`http://localhost:3001/api/itinerary/${itineraryId}`, {
+				method: "DELETE",
+				credentials: "include",
+			});
+
+			const data = await response.json();
+			if (response.ok) {
+				setItineraries((prev) => prev.filter((item) => item._id !== itineraryId));
+				alert("Itinerary deleted successfully!");
+			} else {
+				alert(data.error || "Failed to delete itinerary.");
+			}
+		} catch (error) {
+			console.error("Error deleting itinerary:", err);
+			alert("Something went wrong while deleting the itinerary.");
+		}
+	};
+
 	return (
 		<div className="flex flex-col items-center bg-gray-50 min-h-[calc(100vh-5rem)] py-12 px-4 font-display">
-			{/* ======== PROFILE HEADER ======== */}
 			<div className="flex flex-col items-center mb-10">
 				{user ? (
 					<>
@@ -83,7 +97,6 @@ const ProfilePage = () => {
 				<button className="px-5 py-2 bg-gray-100 text-gray-700 font-semibold text-sm rounded-lg hover:bg-gray-200 transition duration-200">Edit Profile</button>
 			</div>
 
-			{/* ======== TABS NAVIGATION ======== */}
 			<div className="flex justify-center border-b border-gray-200 w-full max-w-xl mb-8">
 				<button
 					className={getTabClass("about")}
@@ -132,7 +145,6 @@ const ProfilePage = () => {
 					</div>
 				)}
 
-				{/* --- Trips Tab --- */}
 				{activeTab === "trips" && (
 					<div className="space-y-6">
 						{loading && <TripsSpinner />}
@@ -150,13 +162,22 @@ const ProfilePage = () => {
 													<p className="text-sm font-semibold text-[#ec6d13] mb-2">{formatDate(itinerary.createdAt)}</p>
 													<h3 className="text-2xl font-bold text-gray-800 mb-2">{itinerary.city}</h3>
 													<p className="text-gray-600 mb-4">{itinerary.days} Day Trip</p>
-													<Link
-														to="/itinerary"
-														state={{ itineraryData: itinerary }}
-														className="inline-block bg-[#ec6d13] text-white font-bold px-6 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
-													>
-														View Itinerary
-													</Link>
+													<div className="flex items-center gap-3">
+														<Link
+															to="/itinerary"
+															state={{ itineraryData: itinerary }}
+															className="bg-[#ec6d13] text-white font-bold px-5 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
+														>
+															View Itinerary
+														</Link>
+
+														<button
+															onClick={() => handleDelete(itinerary._id)}
+															className="bg-red-500 text-white font-bold px-5 py-2 rounded-lg hover:bg-red-600 transition-colors"
+														>
+															Delete
+														</button>
+													</div>
 												</div>
 											</div>
 										))}
@@ -177,7 +198,6 @@ const ProfilePage = () => {
 					</div>
 				)}
 
-				{/* --- Saved Tab --- */}
 				{activeTab === "saved" && (
 					<div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6 text-center">
 						<h2 className="text-xl font-bold text-gray-900 mb-5">Saved Places</h2>

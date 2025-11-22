@@ -1,25 +1,24 @@
 import Itinerary from "../models/Itinerary.js";
-import Place from "../models/Place.js"; // Attraction collection
+import Place from "../models/Place.js"; 
 import User from "../models/User.js";
 
-// --- HELPER FUNCTION: HAVERSINE DISTANCE ---
+
+
 const haversineDistance = (lat1, lng1, lat2, lng2) => {
-	const R = 6371; // Earth's radius in km
+	const R = 6371; 
 	const dLat = ((lat2 - lat1) * Math.PI) / 180;
 	const dLng = ((lng2 - lng1) * Math.PI) / 180;
 	const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
 	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-	return R * c; // Distance in km
+	return R * c; 
 };
 
-// --- HELPER FUNCTION: K-MEANS CLUSTERING ---
 const KMeans = (attractions, k, maxIterations = 100) => {
 	if (attractions.length === 0 || k <= 0) return [];
 
 	const actualK = Math.min(k, attractions.length);
 
 	let centroids = [];
-	// K-Means++ initialization
 	const firstIdx = Math.floor(Math.random() * attractions.length);
 	centroids.push({
 		lat: attractions[firstIdx].latitude,
@@ -49,7 +48,7 @@ const KMeans = (attractions, k, maxIterations = 100) => {
 		}
 	}
 
-	// K-Means iterations
+
 	let clusters = [];
 	let iterations = 0;
 
@@ -98,7 +97,7 @@ const KMeans = (attractions, k, maxIterations = 100) => {
 	return clusters.filter((c) => c.length > 0);
 };
 
-// --- HELPER FUNCTION: PROXIMITY SORT (Nearest Neighbor) ---
+
 const sortDayByProximity = (attractions, startLat, startLng) => {
 	if (!attractions || attractions.length === 0) return [];
 
@@ -130,7 +129,7 @@ const sortDayByProximity = (attractions, startLat, startLng) => {
 	return sorted;
 };
 
-// --- CONTROLLER: GENERATE ITINERARY (Combined Fixes) ---
+
 export const generateItinerary = async (req, res) => {
 	try {
 		const { startLat, startLng, city, days } = req.body;
@@ -146,7 +145,7 @@ export const generateItinerary = async (req, res) => {
 		const latNum = Number(startLat);
 		const lngNum = Number(startLng);
 
-		// Check for existing itinerary
+
 		const existingItinerary = await Itinerary.findOne({
 			user: req.user._id,
 			city,
@@ -159,10 +158,10 @@ export const generateItinerary = async (req, res) => {
 			return res.json({ itinerary: existingItinerary.daysPlan });
 		}
 
-		// --- START OF ITINERARY GENERATION LOGIC ---
+
 		const attractionsPerDay = 5;
 		const totalAttractionsNeeded = days * attractionsPerDay;
-		const fetchLimit = totalAttractionsNeeded + 15; // Fetch extra for clustering
+		const fetchLimit = totalAttractionsNeeded + 15; 
 
 		const allAttractions = await Place.find({ city }).sort({ ranking: 1 }).limit(fetchLimit).select("name city latitude longitude feature image ranking entry_fee opening_time closing_time");
 
@@ -172,10 +171,10 @@ export const generateItinerary = async (req, res) => {
 			});
 		}
 
-		// Cluster all fetched attractions
+
 		const clusters = KMeans(allAttractions, days);
 
-		// Sort clusters by distance from the user's start location
+
 		const clustersWithDistance = clusters.map((cluster) => {
 			const centroidLat = cluster.reduce((sum, a) => sum + a.latitude, 0) / cluster.length;
 			const centroidLng = cluster.reduce((sum, a) => sum + a.longitude, 0) / cluster.length;
@@ -187,63 +186,44 @@ export const generateItinerary = async (req, res) => {
 
 		const itinerary = [];
 
-		// THIS IS THE FIX FOR REPEATS:
-		// A Set to track attraction IDs that have been assigned to a day
+
 		const usedAttractionIds = new Set();
 
-		// This is our master pool for "top-ups", sorted by ranking
 		const rankedAttractionPool = allAttractions.sort((a, b) => a.ranking - b.ranking);
 
-		// --- Day-by-day Itinerary Building Loop ---
 		for (let day = 0; day < days; day++) {
 			let dayAttractions = [];
 
 			if (day < clustersWithDistance.length) {
-				// 1. Get base attractions from this day's cluster
-				// Filter out any that were ALREADY used (e.g., as a top-up on a previous day)
+
 				dayAttractions = clustersWithDistance[day].attractions.filter((attr) => !usedAttractionIds.has(attr._id.toString()));
 			}
 
-			// 2. Check if we need to "top up" to reach attractionsPerDay
 			const needed = attractionsPerDay - dayAttractions.length;
 			if (needed > 0) {
-				// --- FIX ---
-				// Get the IDs of attractions already in this day's list from the cluster
 				const attractionsInDay = new Set(dayAttractions.map((a) => a._id.toString()));
-				// --- END FIX ---
 
-				// Find top-ups that are NOT in the global "used" list
-				// AND are NOT already in this day's list.
 				const topUpAttractions = rankedAttractionPool
 					.filter((attr) => {
 						const id = attr._id.toString();
-						// --- FIX ---
 						return !usedAttractionIds.has(id) && !attractionsInDay.has(id);
-						// --- END FIX ---
 					})
 					.slice(0, needed);
 
-				// Add them to this day's list
 				dayAttractions = [...dayAttractions, ...topUpAttractions];
 			}
 
-			// 3. Finalize the list for the day
-			// Sort by ranking and slice to *exactly* attractionsPerDay
-			// This handles cases where the cluster + top-up was > 5
 			let finalDayAttractions = dayAttractions.sort((a, b) => a.ranking - b.ranking).slice(0, attractionsPerDay);
 
 			if (finalDayAttractions.length === 0) {
-				continue; // No attractions left to assign for this day
+				continue; 
 			}
 
-			// 4. Sort the final day's list by Proximity (Travel Order)
 			let dayStartLat, dayStartLng;
 			if (day === 0) {
-				// Day 1 starts at the user's location
 				dayStartLat = startLat;
 				dayStartLng = startLng;
 			} else {
-				// Subsequent days start at the previous day's *last* attraction
 				const prevDay = itinerary
 					.slice()
 					.reverse()
@@ -254,7 +234,6 @@ export const generateItinerary = async (req, res) => {
 					dayStartLat = lastAttraction.latitude;
 					dayStartLng = lastAttraction.longitude;
 				} else {
-					// Fallback if previous days were empty
 					dayStartLat = startLat;
 					dayStartLng = startLng;
 				}
@@ -262,12 +241,8 @@ export const generateItinerary = async (req, res) => {
 
 			const sortedDayAttractions = sortDayByProximity(finalDayAttractions, dayStartLat, dayStartLng);
 
-			// 5. THIS IS THE KEY:
-			// Add all attractions from the *final* sorted list to the used Set
-			// This ensures they cannot be picked again by the cluster or top-up logic
 			sortedDayAttractions.forEach((attr) => usedAttractionIds.add(attr._id.toString()));
 			const attractionIds = sortedDayAttractions.map((a) => a._id);
-			// 6. Push the final, sorted day plan
 			const morningCount = 3;
 			itinerary.push({
 				day: day + 1,
@@ -277,9 +252,7 @@ export const generateItinerary = async (req, res) => {
 				evening: sortedDayAttractions.slice(morningCount),
 			});
 		}
-		// --- END OF ITINERARY GENERATION LOGIC ---
 
-		// Save the new itinerary
 		const newItinerary = new Itinerary({
 			user: req.user._id,
 			city,
@@ -291,12 +264,10 @@ export const generateItinerary = async (req, res) => {
 		});
 		await newItinerary.save();
 
-		// Add itinerary reference to user
 		await User.findByIdAndUpdate(req.user._id, {
 			$push: { itineraries: newItinerary._id },
 		});
 
-		// Populate the new itinerary before sending it to the front-end
 		const populatedItinerary = await Itinerary.findById(newItinerary._id).populate("daysPlan.attractions daysPlan.morning daysPlan.evening");
 
 		res.json({ itinerary: populatedItinerary.daysPlan });
@@ -306,10 +277,10 @@ export const generateItinerary = async (req, res) => {
 	}
 };
 
-// --- CONTROLLER: GET ITINERARY HISTORY ---
+
 export const getItineraryHistory = async (req, res) => {
 	try {
-		const itineraries = await Itinerary.find({ user: req.user._id }).populate("daysPlan.attractions daysPlan.morning daysPlan.evening").sort({ createdAt: -1 }); // Sort by newest first
+		const itineraries = await Itinerary.find({ user: req.user._id }).populate("daysPlan.attractions daysPlan.morning daysPlan.evening").sort({ createdAt: -1 }); 
 
 		res.status(200).json(itineraries);
 	} catch (error) {
@@ -317,3 +288,22 @@ export const getItineraryHistory = async (req, res) => {
 		res.status(500).json({ error: "Failed to fetch itinerary history" });
 	}
 };
+
+export const deleteItinerary = async(req,res) => {
+	try {
+		const { itineraryId } = req.params;
+
+		const itinerary = await Itinerary.findById(itineraryId);
+		if (!itinerary) {
+			return res.status(404).json({ error: "Itinerary not found" });
+		}	
+
+		await Itinerary.findByIdAndDelete(itineraryId);
+
+		res.status(200).json({ message: "Itinerary deleted successfully" });
+	} catch (error) {
+		console.error("Error deleting itinerary:", error);
+		res.status(500).json({ error: "Failed to delete itinerary" });
+	}	
+}
+
