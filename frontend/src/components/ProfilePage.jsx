@@ -1,4 +1,4 @@
-
+// src/components/ProfilePage.jsx
 
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -9,11 +9,36 @@ const TripsSpinner = () => (
 	</div>
 );
 
-const formatDate = (dateString) => {
-	if (!dateString) return "Date not set";
-	const options = { year: "numeric", month: "long" };
-	return new Date(dateString).toLocaleDateString("en-US", options);
+// --- UPDATED DATE FORMATTER ---
+const getOrdinal = (n) => {
+	const s = ["th", "st", "nd", "rd"];
+	const v = n % 100;
+	return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
+
+const formatTripDates = (startDate, endDate, createdAt) => {
+	// Fallback for old trips that don't have dates saved
+	if (!startDate || !endDate) {
+		if (!createdAt) return "Date not set";
+		// Returns "November 2025" style for old trips
+		return new Date(createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+	}
+
+	const start = new Date(startDate);
+	const end = new Date(endDate);
+
+	const startDay = getOrdinal(start.getDate());
+	const startMonth = start.toLocaleDateString("en-US", { month: "short" });
+
+	const endDay = getOrdinal(end.getDate());
+	const endMonth = end.toLocaleDateString("en-US", { month: "short" });
+
+	const year = end.getFullYear();
+
+	// Returns "2ndFeb - 5thFeb 2025"
+	return `${startDay}${startMonth} - ${endDay}${endMonth} ${year}`;
+};
+// ------------------------------
 
 const ProfilePage = () => {
 	const location = useLocation();
@@ -70,7 +95,7 @@ const ProfilePage = () => {
 				alert(data.error || "Failed to delete itinerary.");
 			}
 		} catch (error) {
-			console.error("Error deleting itinerary:", err);
+			console.error("Error deleting itinerary:", error);
 			alert("Something went wrong while deleting the itinerary.");
 		}
 	};
@@ -81,20 +106,19 @@ const ProfilePage = () => {
 				{user ? (
 					<>
 						<div
-							className="relative w-28 h-28 rounded-full bg-cover bg-center"
+							className="relative w-40 h-40 rounded-full bg-cover bg-center shadow-md"
 							style={{ backgroundImage: `url(${user.profileImg || "./avatar.jpg"})` }}
 						></div>
-						<h1 className="text-3xl font-extrabold text-gray-900 mt-4 mb-1">{user.fullName}</h1>
-						<p className="text-gray-500 text-sm mb-6">@{user.username}</p>
+						<h1 className="text-3xl font-extrabold text-gray-900 mt-6 mb-1">{user.fullName}</h1>
+						<p className="text-gray-500 text-lg mb-2">@{user.username}</p>
 					</>
 				) : (
 					<div className="animate-pulse flex flex-col items-center">
-						<div className="w-28 h-28 rounded-full bg-gray-300"></div>
-						<div className="h-8 w-48 bg-gray-300 rounded mt-4 mb-1"></div>
-						<div className="h-5 w-32 bg-gray-300 rounded mb-6"></div>
+						<div className="w-40 h-40 rounded-full bg-gray-300"></div>
+						<div className="h-8 w-48 bg-gray-300 rounded mt-6 mb-1"></div>
+						<div className="h-5 w-32 bg-gray-300 rounded mb-2"></div>
 					</div>
 				)}
-				<button className="px-5 py-2 bg-gray-100 text-gray-700 font-semibold text-sm rounded-lg hover:bg-gray-200 transition duration-200">Edit Profile</button>
 			</div>
 
 			<div className="flex justify-center border-b border-gray-200 w-full max-w-xl mb-8">
@@ -118,11 +142,10 @@ const ProfilePage = () => {
 				</button>
 			</div>
 
-			{/* ======== TAB CONTENT ======== */}
-			<div className="w-full max-w-xl">
-				{/* --- About Tab --- */}
+			<div className="w-full max-w-4xl">
+				{/* ABOUT TAB */}
 				{activeTab === "about" && (
-					<div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
+					<div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6 max-w-xl mx-auto">
 						<h2 className="text-xl font-bold text-gray-900 mb-5">About</h2>
 						{user ? (
 							<div className="space-y-1">
@@ -145,6 +168,7 @@ const ProfilePage = () => {
 					</div>
 				)}
 
+				{/* TRIPS TAB */}
 				{activeTab === "trips" && (
 					<div className="space-y-6">
 						{loading && <TripsSpinner />}
@@ -152,28 +176,32 @@ const ProfilePage = () => {
 						{!loading && !error && (
 							<>
 								{itineraries.length > 0 ? (
-									<div className="grid grid-cols-1 gap-6">
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 										{itineraries.map((itinerary) => (
 											<div
 												key={itinerary._id}
-												className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 overflow-hidden border border-gray-200/80"
+												className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 overflow-hidden border border-gray-200/80 flex flex-col"
 											>
-												<div className="p-6">
-													<p className="text-sm font-semibold text-[#ec6d13] mb-2">{formatDate(itinerary.createdAt)}</p>
-													<h3 className="text-2xl font-bold text-gray-800 mb-2">{itinerary.city}</h3>
-													<p className="text-gray-600 mb-4">{itinerary.days} Day Trip</p>
-													<div className="flex items-center gap-3">
+												<div className="p-6 flex flex-col flex-grow">
+													<div className="flex-grow">
+														{/* Uses new date formatter */}
+														<p className="text-sm font-semibold text-[#ec6d13] mb-2">{formatTripDates(itinerary.startDate, itinerary.endDate, itinerary.createdAt)}</p>
+														<h3 className="text-2xl font-bold text-gray-800 mb-2">{itinerary.city}</h3>
+														<p className="text-gray-600 mb-4">{itinerary.days} Day Trip</p>
+													</div>
+
+													<div className="flex items-center gap-3 mt-auto pt-4">
 														<Link
 															to="/itinerary"
 															state={{ itineraryData: itinerary }}
-															className="bg-[#ec6d13] text-white font-bold px-5 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
+															className="flex-1 text-center bg-[#ec6d13] text-white font-bold px-4 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
 														>
-															View Itinerary
+															View
 														</Link>
 
 														<button
 															onClick={() => handleDelete(itinerary._id)}
-															className="bg-red-500 text-white font-bold px-5 py-2 rounded-lg hover:bg-red-600 transition-colors"
+															className="flex-1 text-center bg-red-500 text-white font-bold px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
 														>
 															Delete
 														</button>
@@ -183,11 +211,21 @@ const ProfilePage = () => {
 										))}
 									</div>
 								) : (
-									<div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200/80">
-										<p className="text-gray-600">You haven't planned any trips yet.</p>
+									<div className="flex flex-col items-center justify-center text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200/80 max-w-xl mx-auto">
+										<div className="w-96 h-72 mb-6 flex items-center justify-center">
+											<img
+												src="/EmptyBox.png"
+												alt="No trips found"
+												className="w-full h-full object-contain opacity-90"
+											/>
+										</div>
+
+										<h3 className="text-xl font-bold text-gray-800 mb-2">No trips planned yet</h3>
+										<p className="text-gray-500 mb-8 max-w-xs mx-auto">Your adventure awaits! Start planning your next journey now.</p>
+
 										<Link
 											to="/manual-plan"
-											className="mt-4 inline-block bg-[#ec6d13] text-white font-bold px-6 py-2 rounded-lg hover:bg-[#d45f0f] transition-colors"
+											className="inline-block bg-[#ec6d13] text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-orange-200 hover:bg-[#d45f0f] hover:shadow-xl transition-all transform hover:-translate-y-0.5"
 										>
 											Plan a New Trip
 										</Link>
@@ -198,10 +236,32 @@ const ProfilePage = () => {
 					</div>
 				)}
 
+				{/* SAVED TAB */}
 				{activeTab === "saved" && (
-					<div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6 text-center">
-						<h2 className="text-xl font-bold text-gray-900 mb-5">Saved Places</h2>
-						<p className="text-gray-600">No saved places found. Discover new destinations!</p>
+					<div className="space-y-6">
+						{true ? (
+							<div className="flex flex-col items-center justify-center text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200/80 max-w-xl mx-auto">
+								<div className="w-96 h-72 mb-6 flex items-center justify-center">
+									<img
+										src="/SavedBox.png"
+										alt="No saved places"
+										className="w-full h-full object-contain opacity-90"
+									/>
+								</div>
+
+								<h3 className="text-xl font-bold text-gray-800 mb-2">No saved places yet</h3>
+								<p className="text-gray-500 mb-8 max-w-xs mx-auto">Found a spot you love? Save it here for your next adventure.</p>
+
+								<Link
+									to="/discover"
+									className="inline-block bg-[#ec6d13] text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-orange-200 hover:bg-[#d45f0f] hover:shadow-xl transition-all transform hover:-translate-y-0.5"
+								>
+									Discover Places
+								</Link>
+							</div>
+						) : (
+							<p>Saved items list goes here...</p>
+						)}
 					</div>
 				)}
 			</div>

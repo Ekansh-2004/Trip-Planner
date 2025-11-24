@@ -1,10 +1,11 @@
+// src/components/LoginPage.jsx
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const LoginPage = ({ onLogin }) => {
 	const [activeTab, setActiveTab] = useState("login");
 	const [error, setError] = useState(null);
 	const [loading, setLoading] = useState(false);
-
 
 	const [formData, setFormData] = useState({
 		fullName: "",
@@ -15,7 +16,7 @@ const LoginPage = ({ onLogin }) => {
 	});
 
 	const handleInputChange = (e) => {
-		setError(null); 
+		setError(null);
 		setFormData({ ...formData, [e.target.name]: e.target.value });
 	};
 
@@ -74,16 +75,16 @@ const LoginPage = ({ onLogin }) => {
 	};
 
 	const getTabButtonClass = (tabName) => {
-		const baseClasses = "w-1/2 py-2.5 text-sm font-bold rounded-md transition-colors";
+		const baseClasses = "w-1/2 py-3 text-sm font-bold rounded-lg transition-all duration-200";
 		if (activeTab === tabName) {
-			return `${baseClasses} bg-[#fa7938] text-white`;
+			return `${baseClasses} bg-[#fa7938] text-white shadow-md`;
 		}
-		return `${baseClasses} text-gray-700 hover:bg-[#fa7938]/10`;
+		return `${baseClasses} text-gray-600 hover:bg-gray-100`;
 	};
 
 	return (
 		<div
-			className="flex flex-col min-h-screen"
+			className="flex flex-col min-h-screen font-display"
 			style={{
 				backgroundImage: `url('/LoginBG2.png')`,
 				backgroundSize: "cover",
@@ -91,25 +92,40 @@ const LoginPage = ({ onLogin }) => {
 				backgroundAttachment: "fixed",
 			}}
 		>
-			<header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-[#DEE2E6]">
-				<nav className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
-					<div className="flex items-center gap-3">
-						<div className="size-10 text-[#FF6B35]"></div>
-						<h1 className="text-2xl font-bold leading-tight text-[#FF6B35]">Trip Sage</h1>
+			{/* Header - Centered and Simplified */}
+			<header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-white/20 shadow-sm">
+				<nav className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center h-24">
+					<div className="flex items-center gap-4 transition-transform duration-300 hover:scale-105 cursor-default">
+						{/* Logo */}
+						<div className="h-14 w-14 bg-white/50 rounded-2xl shadow-sm p-1">
+							<img
+								src="/LOGO.png"
+								alt="Trip Sage Logo"
+								className="w-full h-full object-contain rounded-xl"
+							/>
+						</div>
+						{/* Brand Name */}
+						<h1 className="text-3xl font-extrabold tracking-tight text-[#FF6B35] drop-shadow-sm">Trip Sage</h1>
 					</div>
-					<button className="px-4 py-2 rounded-lg text-sm font-bold bg-[#fa7938]/10 text-[#fa7938] hover:bg-[#fa7938]/20 transition-colors">Help</button>
 				</nav>
 			</header>
 
 			<main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
 				<div className="w-full max-w-md space-y-8">
-					<div className="text-center">
-						<h2 className="text-3xl font-bold tracking-tight text-[#181311]">Welcome to Trip Sage</h2>
-						<p className="mt-2 text-[#8c6e5f]">Your AI-powered travel planner.</p>
+					{/* Hero Text */}
+					<div className="text-center mb-8">
+						<h2 className="text-4xl font-extrabold tracking-tight text-[#181311] mb-4">
+							Welcome to Trip Sage
+						</h2>
+						<p className="text-xl font-medium text-[#4A3B32] max-w-sm mx-auto leading-relaxed">
+							Discover the world with itineraries crafted just for you.
+						</p>
 					</div>
 
-					<div className="bg-white/90 backdrop-blur-md p-8 rounded-xl border border-gray-200 shadow-xl">
-						<div className="bg-[#f0edea] p-1 rounded-lg flex items-center mb-8">
+					{/* Card Container */}
+					<div className="bg-white/95 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/50">
+						{/* Tabs */}
+						<div className="bg-gray-100 p-1.5 rounded-xl flex items-center mb-8">
 							<button
 								className={getTabButtonClass("login")}
 								onClick={() => setActiveTab("login")}
@@ -124,82 +140,86 @@ const LoginPage = ({ onLogin }) => {
 							</button>
 						</div>
 
+						{/* Login Form */}
 						{activeTab === "login" && (
 							<form
 								onSubmit={handleLoginSubmit}
-								className="space-y-6"
+								className="space-y-5"
 							>
 								<div className="space-y-4">
 									<div>
+										<label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Username</label>
 										<input
 											name="username"
 											value={formData.username}
 											onChange={handleInputChange}
 											type="text"
 											required
-											className="w-full px-4 py-3 rounded-lg bg-[#f0edea] border-transparent focus:outline-none focus:ring-2 focus:ring-[#fa7938]"
-											placeholder="Username"
+											className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fa7938] focus:border-transparent transition-all placeholder-gray-400 text-gray-900 font-medium"
+											placeholder="Enter your username"
 										/>
 									</div>
 									<div>
+										<label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Password</label>
 										<input
 											name="password"
 											value={formData.password}
 											onChange={handleInputChange}
 											type="password"
 											required
-											className="w-full px-4 py-3 rounded-lg bg-[#f0edea] border-transparent focus:outline-none focus:ring-2 focus:ring-[#fa7938]"
-											placeholder="Password"
+											className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fa7938] focus:border-transparent transition-all placeholder-gray-400 text-gray-900 font-medium"
+											placeholder="Enter your password"
 										/>
 									</div>
 								</div>
-								<div className="text-right text-sm">
+								<div className="flex justify-end">
 									<a
 										href="#"
-										className="font-medium text-[#fa7938] hover:text-[#fa7938]/80"
+										className="text-sm font-semibold text-[#fa7938] hover:text-[#e66020] transition-colors"
 									>
-										Forgot your password?
+										Forgot password?
 									</a>
 								</div>
-								<div>
-									<button
-										type="submit"
-										disabled={loading}
-										className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-bold text-white bg-[#fa7938] hover:bg-[#fa7938]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#fa7938] disabled:bg-gray-400 disabled:cursor-not-allowed"
-									>
-										{loading ? "Logging in..." : "Log in"}
-									</button>
-								</div>
+								<button
+									type="submit"
+									disabled={loading}
+									className="w-full py-3.5 px-4 rounded-xl shadow-lg shadow-[#fa7938]/30 text-sm font-bold text-white bg-[#fa7938] hover:bg-[#e66020] hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#fa7938] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+								>
+									{loading ? "Logging in..." : "Log in"}
+								</button>
 							</form>
 						)}
 
+						{/* Signup Form */}
 						{activeTab === "signup" && (
 							<form
 								onSubmit={handleSignupSubmit}
-								className="space-y-6"
+								className="space-y-5"
 							>
-								<div className="space-y-4">
-									<div>
-										<input
-											name="fullName"
-											value={formData.fullName}
-											onChange={handleInputChange}
-											type="text"
-											placeholder="Full Name"
-											required
-											className="w-full px-4 py-3 rounded-lg bg-[#f0edea] border-transparent focus:outline-none focus:ring-2 focus:ring-[#fa7938]"
-										/>
-									</div>
-									<div>
-										<input
-											name="username"
-											value={formData.username}
-											onChange={handleInputChange}
-											type="text"
-											placeholder="Username"
-											required
-											className="w-full px-4 py-3 rounded-lg bg-[#f0edea] border-transparent focus:outline-none focus:ring-2 focus:ring-[#fa7938]"
-										/>
+								<div className="space-y-3">
+									<div className="grid grid-cols-2 gap-3">
+										<div>
+											<input
+												name="fullName"
+												value={formData.fullName}
+												onChange={handleInputChange}
+												type="text"
+												placeholder="Full Name"
+												required
+												className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fa7938] transition-all font-medium"
+											/>
+										</div>
+										<div>
+											<input
+												name="username"
+												value={formData.username}
+												onChange={handleInputChange}
+												type="text"
+												placeholder="Username"
+												required
+												className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fa7938] transition-all font-medium"
+											/>
+										</div>
 									</div>
 									<div>
 										<input
@@ -209,7 +229,7 @@ const LoginPage = ({ onLogin }) => {
 											type="email"
 											placeholder="Email address"
 											required
-											className="w-full px-4 py-3 rounded-lg bg-[#f0edea] border-transparent focus:outline-none focus:ring-2 focus:ring-[#fa7938]"
+											className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fa7938] transition-all font-medium"
 										/>
 									</div>
 									<div>
@@ -220,7 +240,7 @@ const LoginPage = ({ onLogin }) => {
 											type="password"
 											placeholder="Password"
 											required
-											className="w-full px-4 py-3 rounded-lg bg-[#f0edea] border-transparent focus:outline-none focus:ring-2 focus:ring-[#fa7938]"
+											className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fa7938] transition-all font-medium"
 										/>
 									</div>
 									<div>
@@ -231,44 +251,56 @@ const LoginPage = ({ onLogin }) => {
 											type="password"
 											placeholder="Confirm Password"
 											required
-											className="w-full px-4 py-3 rounded-lg bg-[#f0edea] border-transparent focus:outline-none focus:ring-2 focus:ring-[#fa7938]"
+											className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fa7938] transition-all font-medium"
 										/>
 									</div>
 								</div>
-								<div className="text-left text-xs text-[#8c6e5f]">
-									By signing up, you agree to our{" "}
+
+								<p className="text-xs text-center text-gray-500 mt-2">
+									By joining, you agree to our{" "}
 									<a
 										href="#"
-										className="font-medium text-[#fa7938] hover:text-[#fa7938]/80"
+										className="font-bold text-gray-700 hover:underline"
 									>
-										Terms of Service
+										Terms
+									</a>{" "}
+									and{" "}
+									<a
+										href="#"
+										className="font-bold text-gray-700 hover:underline"
+									>
+										Privacy Policy
 									</a>
 									.
-								</div>
-								<div>
-									<button
-										type="submit"
-										disabled={loading}
-										className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-bold text-white bg-[#fa7938] hover:bg-[#fa7938]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#fa7938] disabled:bg-gray-400 disabled:cursor-not-allowed"
-									>
-										{loading ? "Creating Account..." : "Create account"}
-									</button>
-								</div>
+								</p>
+
+								<button
+									type="submit"
+									disabled={loading}
+									className="w-full py-3.5 px-4 rounded-xl shadow-lg shadow-[#fa7938]/30 text-sm font-bold text-white bg-[#fa7938] hover:bg-[#e66020] hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#fa7938] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+								>
+									{loading ? "Creating Account..." : "Create account"}
+								</button>
 							</form>
 						)}
 
-						{error && <p className="mt-4 text-center text-sm text-red-600">{error}</p>}
-
-						<div className="relative mt-6">
-							<div className="absolute inset-0 flex items-center">
-								<div className="w-full border-t border-gray-300"></div>
+						{error && (
+							<div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg flex items-center justify-center gap-2 text-red-600 text-sm font-medium animate-pulse">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 20 20"
+									fill="currentColor"
+									className="w-4 h-4"
+								>
+									<path
+										fillRule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clipRule="evenodd"
+									/>
+								</svg>
+								{error}
 							</div>
-							<div className="relative flex justify-center text-sm">
-								<span className="px-2 bg-white text-[#8c6e5f]">Or continue with</span>
-							</div>
-						</div>
-
-						<div className="mt-6 grid grid-cols-2 gap-3"></div>
+						)}
 					</div>
 				</div>
 			</main>

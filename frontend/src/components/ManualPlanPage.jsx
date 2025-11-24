@@ -1,8 +1,7 @@
 // src/components/ManualPlanPage.jsx
 import { useLocation, useNavigate } from "react-router-dom";
-
 import { AnimatePresence, motion } from "framer-motion";
-import { forwardRef, useState } from "react";
+import { forwardRef, useState, useRef, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -33,6 +32,27 @@ const ManualPlanPage = () => {
 	const [startingPoint, setStartingPoint] = useState("");
 	const [startDate, setStartDate] = useState(null);
 	const [endDate, setEndDate] = useState(null);
+
+	// 1. Create refs for inputs
+	const destinationRef = useRef(null);
+	const startingPointRef = useRef(null);
+	const startDateRef = useRef(null); // <-- New ref for the date picker
+
+	useEffect(() => {
+		// 2. Logic to focus the correct element based on the step
+		const timer = setTimeout(() => {
+			if (step === 1 && destinationRef.current) {
+				destinationRef.current.focus();
+			} else if (step === 2 && startingPointRef.current) {
+				startingPointRef.current.focus();
+			} else if (step === 3 && startDateRef.current) {
+				// react-datepicker uses .setFocus() to focus the input
+				startDateRef.current.setFocus(); 
+			}
+		}, 500); // 500ms delay to wait for animation
+
+		return () => clearTimeout(timer);
+	}, [step]);
 
 	const progressPercentage = step === 1 ? 25 : step === 2 ? 66 : 100;
 
@@ -118,12 +138,13 @@ const ManualPlanPage = () => {
 										</svg>
 									</div>
 									<input
+										ref={destinationRef}
 										className="w-full h-14 rounded-xl border-gray-300 bg-gray-50/80 placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ef5006] focus:border-transparent pl-16 pr-6 text-lg transition"
 										value={destination}
 										onChange={(e) => setDestination(e.target.value)}
 										placeholder="e.g., Jaipur, India"
 										type="text"
-
+										autoFocus
 										onKeyPress={(e) => {
 											if (e.key === "Enter" && destination) {
 												handleNext();
@@ -168,12 +189,13 @@ const ManualPlanPage = () => {
 									</div>
 
 									<input
+										ref={startingPointRef}
 										className="w-full h-14 rounded-xl border-gray-300 bg-gray-50/80 placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ef5006] focus:border-transparent pl-16 pr-6 text-lg transition"
 										value={startingPoint}
 										onChange={(e) => setStartingPoint(e.target.value)}
 										placeholder="e.g., Jaipur Junction"
 										type="text"
-
+										autoFocus
 										onKeyPress={(e) => {
 											if (e.key === "Enter" && startingPoint) {
 												handleNext();
@@ -213,6 +235,7 @@ const ManualPlanPage = () => {
 								<p className="text-gray-500 mb-6">Select your start and end dates for the trip.</p>
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<DatePicker
+										ref={startDateRef} // 3. Attach the ref to the first DatePicker
 										selected={startDate}
 										onChange={(date) => setStartDate(date)}
 										selectsStart
