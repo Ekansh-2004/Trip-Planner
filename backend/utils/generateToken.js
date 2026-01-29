@@ -5,11 +5,16 @@ export const generateTokenAndSetCookie = (userId, res) => {
 
 	const isProduction = process.env.NODE_ENV === "production";
 
-	res.cookie("jwt", token, {
-		httpOnly: true,
-		secure: isProduction, 
-		sameSite: isProduction ? "none" : "lax", 
-		path: "/",
-		maxAge: 15 * 24 * 60 * 60 * 1000,
-	});
+	if (isProduction) {
+		const maxAge = 15 * 24 * 60 * 60;
+		res.setHeader("Set-Cookie", `jwt=${token}; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age=${maxAge}; Path=/`);
+	} else {
+		res.cookie("jwt", token, {
+			httpOnly: true,
+			secure: false,
+			sameSite: "lax",
+			path: "/",
+			maxAge: 15 * 24 * 60 * 60 * 1000,
+		});
+	}
 };

@@ -85,12 +85,23 @@ export const login = async (req, res) => {
 // LOG OUT FUNCTION
 export const logout = async (req, res) => {
 	try {
-		res.clearCookie("jwt", {
-			httpOnly: true,
-			secure: false,
-			sameSite: "lax",
-			path: "/",
-		});
+		const isProduction = process.env.NODE_ENV === "production";
+		
+		if (isProduction) {
+			// For production, clear with same attributes as when setting
+			res.setHeader(
+				'Set-Cookie',
+				'jwt=; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age=0; Path=/'
+			);
+		} else {
+			// For development
+			res.clearCookie("jwt", {
+				httpOnly: true,
+				secure: false,
+				sameSite: "lax",
+				path: "/",
+			});
+		}
 
 		return res.status(200).json({ message: "Logged out" });
 	} catch (error) {
