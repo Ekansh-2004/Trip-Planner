@@ -65,6 +65,10 @@ const ItineraryPage = () => {
 	const [cuisines, setCuisines] = useState([]);
 	const [activities, setActivities] = useState([]);
 	const [loadingExtra, setLoadingExtra] = useState(false);
+	
+	// NEW: State for manual refresh
+	const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
+	const [lastRefreshTime, setLastRefreshTime] = useState(null);
 
 	const itineraryDataRef = useRef(itineraryData);
 	useEffect(() => {
@@ -157,7 +161,9 @@ const ItineraryPage = () => {
 			setLoading(true);
 			const location = startLocation + ", " + city;
 
-			const geoResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/geocode?location=${encodeURIComponent(location)}`, { credentials: "include" });
+			const geoResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/geocode?location=${encodeURIComponent(location)}`, {
+				credentials: "include"
+			});
 			const geoData = await geoResponse.json();
 			const { lat, lng } = geoData;
 
@@ -242,209 +248,212 @@ const ItineraryPage = () => {
 				}
 			}
 
-			dayTimeline.push({ type: "section", title: "Afternoon" });
-			dayTimeline.push({
-				type: "action",
-				details: {
-					title: "Time for Lunch?",
-					subtitle: "Discover local flavors and refuel for your adventure.",
-					buttonText: "Find Food",
-					actionType: "restaurants",
+			if (morningAttractions.length > 0) {
+				dayTimeline.push({
+					type: "action",
+					details: {
+						title: "☕ Lunch Break",
+						subtitle: "Explore nearby restaurants",
+					},
+					actionType: "restaurant",
 					lat: lastAttraction?.latitude,
 					lng: lastAttraction?.longitude,
-				},
-			});
+					city: tripCity,
+				});
+			}
 
-			if (eveningAttractions.length) {
-				dayTimeline.push({ type: "section", title: "Evening" });
-				for (let i = 0; i < eveningAttractions.length; i++) {
-					const attraction = eveningAttractions[i];
-					lastAttraction = attraction;
+			dayTimeline.push({ type: "section", title: "Evening" });
+			for (let i = 0; i < eveningAttractions.length; i++) {
+				const attraction = eveningAttractions[i];
+				lastAttraction = attraction;
 
-					dayTimeline.push({
-						type: "activity",
-						details: {
-							title: attraction.name,
-							fee: attraction.entry_fee || "N/A",
-							opening_time: attraction.opening_time || "N/A",
-							closing_time: attraction.closing_time || "N/A",
-							imageUrl: attraction.image || "https://images.unsplash.com/photo-1564507592333-c60657eea523",
-							lat: attraction.latitude,
-							lng: attraction.longitude,
-						},
-					});
+				dayTimeline.push({
+					type: "activity",
+					details: {
+						title: attraction.name,
+						fee: attraction.entry_fee || "N/A",
+						opening_time: attraction.opening_time || "N/A",
+						closing_time: attraction.closing_time || "N/A",
+						imageUrl: attraction.image || "https://images.unsplash.com/photo-1564507592333-c60657eea523",
+						lat: attraction.latitude,
+						lng: attraction.longitude,
+					},
+				});
 
-					if (i < eveningAttractions.length - 1) {
-						const currentAttraction = eveningAttractions[i];
-						const nextAttraction = eveningAttractions[i + 1];
-						const trafficData = await fetchTrafficData(currentAttraction.latitude, currentAttraction.longitude, nextAttraction.latitude, nextAttraction.longitude);
+				if (i < eveningAttractions.length - 1) {
+					const currentAttraction = eveningAttractions[i];
+					const nextAttraction = eveningAttractions[i + 1];
+					const trafficData = await fetchTrafficData(currentAttraction.latitude, currentAttraction.longitude, nextAttraction.latitude, nextAttraction.longitude);
 
-						if (trafficData) {
-							dayTimeline.push({
-								type: "travel",
-								details: {
-									time: trafficData.duration,
-									distance: trafficData.distance,
-									traffic: trafficData.trafficCondition,
-								},
-							});
-						}
+					if (trafficData) {
+						dayTimeline.push({
+							type: "travel",
+							details: {
+								time: trafficData.duration,
+								distance: trafficData.distance,
+								traffic: trafficData.trafficCondition,
+							},
+						});
 					}
 				}
 			}
 
-			dayTimeline.push({ type: "section", title: "Night" });
-			dayTimeline.push({
-				type: "action",
-				details: {
-					title: "Dinner Plans?",
-					subtitle: "End your day with a memorable meal.",
-					buttonText: "Find Restaurants",
-					actionType: "restaurants",
+			if (eveningAttractions.length > 0) {
+				dayTimeline.push({
+					type: "action",
+					details: {
+						title: "🍽️ Dinner Spot",
+						subtitle: "Find places for dinner",
+					},
+					actionType: "restaurant",
 					lat: lastAttraction?.latitude,
 					lng: lastAttraction?.longitude,
-				},
-			});
-			dayTimeline.push({ type: "travel", details: { time: "Back to Hotel" } });
-			dayTimeline.push({
-				type: "action",
-				details: {
-					title: "Time to Rest?",
-					subtitle: "Find the perfect hotel to recharge for tomorrow.",
-					buttonText: "Find Hotels",
-					actionType: "hotels",
+					city: tripCity,
+				});
+
+				dayTimeline.push({
+					type: "action",
+					details: {
+						title: "🏨 Find Hotels Nearby",
+						subtitle: "Rest for the night",
+					},
+					actionType: "hotel",
 					lat: lastAttraction?.latitude,
 					lng: lastAttraction?.longitude,
-				},
-			});
+					city: tripCity,
+				});
+			}
 
 			timeline[dayKey] = dayTimeline;
 		}
 
-		const finalData = {
-			tripTitle: `Your ${backendItinerary.length}-Day Trip to ${tripCity}`,
+		const finalItinerary = {
+			tripTitle: `${tripCity} Trip`,
+			city: tripCity,
 			days,
 			timeline,
-			city: tripCity,
 		};
 
+		setItineraryData(finalItinerary);
+		setLastRefreshTime(new Date());
+
 		if (cacheInfo) {
-			const { startLocation, startDate, endDate } = cacheInfo;
-			const cacheKey = `itinerary-${tripCity}-${startLocation}-${startDate}-${endDate}`;
-			localStorage.setItem(cacheKey, JSON.stringify(finalData));
+			const cacheKey = `itinerary-${tripCity}-${cacheInfo.startLocation}-${cacheInfo.startDate}-${cacheInfo.endDate}`;
+			localStorage.setItem(cacheKey, JSON.stringify(finalItinerary));
 		}
-
-		setItineraryData(finalData);
 	};
-	const fetchCultureData = async (city, type) => {
-		try {
-			setLoadingExtra(true);
-			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/culture/${type}/${city}`, {
-				credentials: "include",
-			});
-			const data = await response.json();
 
-			if (response.ok) {
-				if (type === "cuisine") setCuisines(data);
-				if (type === "activities") setActivities(data);
-			} else {
-				console.error(`Failed to fetch ${type}:`, data.error);
+	const fetchTrafficData = async (originLat, originLng, destLat, destLng) => {
+		try {
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/traffic?origin=${originLat},${originLng}&destination=${destLat},${destLng}`, {
+				credentials: "include"
+			});
+			if (!response.ok) throw new Error(`Traffic API error: ${response.status}`);
+			return await response.json();
+		} catch (error) {
+			console.error("Error fetching traffic data:", error);
+			return null;
+		}
+	};
+
+	const fetchPlaceDetails = async (lat, lng, type) => {
+		try {
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/nearby?lat=${lat}&lng=${lng}&type=${type}`, {
+				credentials: "include"
+			});
+			if (!response.ok) throw new Error(`Nearby API error: ${response.status}`);
+			return await response.json();
+		} catch (error) {
+			console.error(`Error fetching ${type}:`, error);
+			return null;
+		}
+	};
+
+	const fetchCuisinesAndActivities = async (city) => {
+		setLoadingExtra(true);
+		try {
+			const [cuisinesRes, activitiesRes] = await Promise.all([
+				fetch(`${import.meta.env.VITE_API_URL}/api/cuisines/${encodeURIComponent(city)}`, {
+					credentials: "include"
+				}),
+				fetch(`${import.meta.env.VITE_API_URL}/api/activities/${encodeURIComponent(city)}`, {
+					credentials: "include"
+				}),
+			]);
+
+			if (cuisinesRes.ok) {
+				const cuisinesData = await cuisinesRes.json();
+				setCuisines(cuisinesData.cuisines || []);
 			}
-		} catch (err) {
-			console.error("Error fetching culture data:", err);
+
+			if (activitiesRes.ok) {
+				const activitiesData = await activitiesRes.json();
+				setActivities(activitiesData.activities || []);
+			}
+		} catch (error) {
+			console.error("Error loading extra data:", error);
 		} finally {
 			setLoadingExtra(false);
 		}
 	};
 
 	useEffect(() => {
-		if (!itineraryData?.city) return;
-
-		if (activeTab === "Cuisine" && cuisines.length === 0) {
-			fetchCultureData(itineraryData.city, "cuisine");
-		} else if (activeTab === "Activities" && activities.length === 0) {
-			fetchCultureData(itineraryData.city, "activities");
+		if (activeTab === "Cuisine" && cuisines.length === 0 && itineraryData?.city) {
+			fetchCuisinesAndActivities(itineraryData.city);
 		}
-	}, [activeTab, itineraryData]);
-
-	const fetchTrafficData = async (originLat, originLng, destLat, destLng) => {
-		try {
-			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/location-info/temp?userLat=${originLat}&userLng=${originLng}&destLat=${destLat}&destLng=${destLng}`, {
-				credentials: "include",
-			});
-
-			if (!response.ok) {
-				console.error("Traffic API error:", response.status);
-				return null;
-			}
-
-			const data = await response.json();
-
-			if (data.success && data.data?.traffic) {
-				return {
-					duration: data.data.traffic.duration,
-					distance: data.data.traffic.distance,
-					trafficCondition: capitalizeFirst(data.data.traffic.trafficCondition),
-				};
-			}
-		} catch (err) {
-			console.error("Traffic fetch error:", err);
+		if (activeTab === "Activities" && activities.length === 0 && itineraryData?.city) {
+			fetchCuisinesAndActivities(itineraryData.city);
 		}
-		return null;
+	}, [activeTab]);
+
+	const handleActionClick = (actionDetails) => {
+		const { actionType, lat, lng, city } = actionDetails;
+		if (!lat || !lng || !city) return;
+
+		const userLocation = { lat, lng };
+		setModalContent({ type: actionType, lat, lng, city, userLocation });
 	};
 
-	const capitalizeFirst = (str) => {
-		if (!str) return "Moderate";
-		return str.charAt(0).toUpperCase() + str.slice(1);
-	};
-
-	const handleDaySelect = (day) => {
-		setActiveDay(day);
-		const element = document.getElementById(day.replace(" ", ""));
+	const handleDaySelect = (dayKey) => {
+		isClickScrolling.current = true;
+		const element = document.getElementById(dayKey.replace(" ", ""));
 		if (element) {
-			isClickScrolling.current = true;
-			element.scrollIntoView({ behavior: "smooth", block: "start" });
+			const offset = 120;
+			const elementPosition = element.getBoundingClientRect().top;
+			const offsetPosition = elementPosition + window.scrollY - offset;
+			window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+			setActiveDay(dayKey);
 			setTimeout(() => {
 				isClickScrolling.current = false;
 			}, 1000);
 		}
 	};
 
-	const handleActionClick = (details) => {
-		if (details.lat && details.lng) {
-			setModalContent({
-				type: details.actionType,
-				lat: details.lat,
-				lng: details.lng,
-				city: itineraryData.city,
-				userLocation: { lat: details.lat, lng: details.lng },
-			});
-		} else {
-			console.error("Action aborted: Missing lat/lng data.");
-		}
-	};
-
-	const findNeighborActivities = (items, idx) => {
+	const findNeighborActivities = (items, travelIndex) => {
 		let prev = null,
 			next = null;
 
-		for (let i = idx - 1; i >= 0; i--) {
+		for (let i = travelIndex - 1; i >= 0; i--) {
 			if (items[i]?.type === "activity") {
 				prev = items[i];
 				break;
 			}
 		}
-		for (let j = idx + 1; j < items.length; j++) {
-			if (items[j]?.type === "activity") {
-				next = items[j];
+
+		for (let i = travelIndex + 1; i < items.length; i++) {
+			if (items[i]?.type === "activity") {
+				next = items[i];
 				break;
 			}
 		}
 		return { prev, next };
 	};
 
+	// UPDATED: Manual refresh function with loading state
 	const refreshAllTraffic = async () => {
 		if (!itineraryDataRef.current?.timeline) return;
+		
+		setIsRefreshingTraffic(true);
 		console.log("🔄 Refreshing traffic data at", new Date().toLocaleTimeString());
 
 		const updated = {
@@ -492,27 +501,18 @@ const ItineraryPage = () => {
 
 		await Promise.all(promises);
 		setItineraryData(updated);
+		setLastRefreshTime(new Date());
+		setIsRefreshingTraffic(false);
 	};
 
+	// REMOVED: Auto-refresh interval - now only manual refresh
+	// Load traffic data once on initial load
 	useEffect(() => {
 		if (loading || error) return;
 		if (!itineraryDataRef.current) return;
 
 		console.log("🚀 Initial traffic load.");
 		refreshAllTraffic();
-
-		const intervalId = setInterval(
-			() => {
-				console.log("🕒 Triggering scheduled refresh...");
-				refreshAllTraffic();
-			},
-			30 * 60 * 1000,
-		);
-
-		return () => {
-			console.log("🧹 Clearing traffic refresh interval");
-			clearInterval(intervalId);
-		};
 	}, [loading, error]);
 
 	if (loading) {
@@ -525,16 +525,16 @@ const ItineraryPage = () => {
 
 	if (error) {
 		return (
-			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-xl font-semibold text-red-600">Error: {error}</div>
+			<div className="flex items-center justify-center min-h-screen text-red-500">
+				<p>Error: {error}</p>
 			</div>
 		);
 	}
 
 	if (!itineraryData) {
 		return (
-			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-xl font-semibold text-gray-600">No itinerary data available. Please go back and create a new trip.</div>
+			<div className="flex items-center justify-center min-h-screen text-gray-600">
+				<p>No itinerary data available.</p>
 			</div>
 		);
 	}
@@ -542,7 +542,40 @@ const ItineraryPage = () => {
 	return (
 		<div>
 			<main className="max-w-4xl mx-auto px-8 py-8 mt-8 bg-white rounded-xl shadow-lg border border-[#DEE2E6]">
-				<h1 className="text-4xl font-bold text-gray-800 mb-4">{itineraryData.tripTitle}</h1>
+				<div className="flex items-center justify-between mb-4">
+					<h1 className="text-4xl font-bold text-gray-800">{itineraryData.tripTitle}</h1>
+					
+					{/* NEW: Manual Refresh Button */}
+					{activeTab === "Itinerary" && (
+						<button
+							onClick={refreshAllTraffic}
+							disabled={isRefreshingTraffic}
+							className="flex items-center gap-2 px-4 py-2 bg-[#ef5006] text-white rounded-lg hover:bg-[#d64506] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							<svg 
+								className={`w-5 h-5 ${isRefreshingTraffic ? 'animate-spin' : ''}`}
+								fill="none" 
+								stroke="currentColor" 
+								viewBox="0 0 24 24"
+							>
+								<path 
+									strokeLinecap="round" 
+									strokeLinejoin="round" 
+									strokeWidth={2} 
+									d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+								/>
+							</svg>
+							{isRefreshingTraffic ? 'Refreshing...' : 'Refresh Traffic'}
+						</button>
+					)}
+				</div>
+				
+				{/* Show last refresh time */}
+				{lastRefreshTime && activeTab === "Itinerary" && (
+					<p className="text-sm text-gray-500 mb-4">
+						Last updated: {lastRefreshTime.toLocaleTimeString()}
+					</p>
+				)}
 
 				<div className="relative flex gap-2 border-b border-gray-200 mb-6 bg-gray-100 p-1.5 rounded-full">
 					{["Itinerary", "Cuisine", "Activities"].map((tab) => (
