@@ -33,9 +33,13 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 		setAttractions([]);
 
 		try {
-			const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/geocode`, {
-				params: { location: location.trim() },
-			});
+			const response = await axios.get(
+				`${import.meta.env.VITE_API_URL}/api/geocode`,
+				{
+					params: { location: location.trim() },
+				},
+				{ credentials: "include" },
+			);
 			const { lat, lng } = response.data;
 			setCoordinates({ lat, lng });
 			await fetchAllData(lat, lng, radius);

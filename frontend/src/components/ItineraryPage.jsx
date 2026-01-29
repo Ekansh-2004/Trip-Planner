@@ -157,7 +157,7 @@ const ItineraryPage = () => {
 			setLoading(true);
 			const location = startLocation + ", " + city;
 
-			const geoResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/geocode?location=${encodeURIComponent(location)}`);
+			const geoResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/geocode?location=${encodeURIComponent(location)}`, { credentials: "include" });
 			const geoData = await geoResponse.json();
 			const { lat, lng } = geoData;
 
