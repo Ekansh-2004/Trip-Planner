@@ -23,7 +23,7 @@ const NearbyPlacesModal = ({ type, lat, lng, city, userLocation, onClose }) => {
 			setError(null);
 			try {
 				const response = await axios.post(
-					`${process.env.REACT_APP_API_URL}/api/places/${type}`,
+					`${import.meta.env.VITE_API_URL}/api/places/${type}`,
 					{
 						lat,
 						lng,

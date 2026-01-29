@@ -33,7 +33,7 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 		setAttractions([]);
 
 		try {
-			const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/geocode`, {
+			const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/geocode`, {
 				params: { location: location.trim() },
 			});
 			const { lat, lng } = response.data;
@@ -54,7 +54,7 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 			const requests = types.map((type) =>
 				axios
 					.post(
-						`${process.env.REACT_APP_API_URL}/api/places/${type}`,
+						`${import.meta.env.VITE_API_URL}/api/places/${type}`,
 						{
 							lat,
 							lng,

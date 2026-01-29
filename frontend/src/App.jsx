@@ -46,7 +46,7 @@ function App() {
 	useEffect(() => {
 		const checkAuthStatus = async () => {
 			try {
-				const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/me`, {
+				const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
 					credentials: "include",
 				});
 
@@ -71,7 +71,7 @@ function App() {
 
 	const handleLogout = async () => {
 		try {
-			await fetch(`${process.env.REACT_APP_API_URL}/api/auth/logout`, {
+			await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
 				method: "POST",
 				credentials: "include",
 			});
