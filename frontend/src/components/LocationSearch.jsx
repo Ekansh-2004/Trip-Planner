@@ -1,20 +1,19 @@
 // src/components/LocationSearch.jsx
 
 import axios from "axios";
-import { useState } from "react"; 
+import { useState } from "react";
 import EmptyState from "./EmptyState";
 import LoadingSpinner from "./LoadingSpinner";
 import PlaceCard from "./PlaceCard";
 
 const calculateDistance = (lat1, lng1, lat2, lng2) => {
-	const R = 6371; 
+	const R = 6371;
 	const dLat = ((lat2 - lat1) * Math.PI) / 180;
 	const dLng = ((lng2 - lng1) * Math.PI) / 180;
 	const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
 	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 	return R * c;
 };
-
 
 const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, radius, setRadius, hotels, setHotels, restaurants, setRestaurants, attractions, setAttractions }) => {
 	const [activeTab, setActiveTab] = useState("hotels");
@@ -34,7 +33,7 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 		setAttractions([]);
 
 		try {
-			const response = await axios.get("http://localhost:3001/api/geocode", {
+			const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/geocode`, {
 				params: { location: location.trim() },
 			});
 			const { lat, lng } = response.data;
@@ -55,19 +54,19 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 			const requests = types.map((type) =>
 				axios
 					.post(
-						`http://localhost:3001/api/places/${type}`,
+						`${process.env.REACT_APP_API_URL}/api/places/${type}`,
 						{
 							lat,
 							lng,
 							radius: currentRadius,
 							city: location,
 						},
-						{ withCredentials: true }
+						{ withCredentials: true },
 					)
 					.catch((err) => {
 						console.error(`Failed to fetch ${type}:`, err);
 						return { data: {} };
-					})
+					}),
 			);
 
 			const responses = await Promise.all(requests);
@@ -87,7 +86,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 				distance: calculateDistance(lat, lng, place.latitude, place.longitude).toFixed(2),
 			}));
 
-
 			setHotels(hotelResults);
 			setRestaurants(restaurantResults);
 			setAttractions(attractionResults);
@@ -100,7 +98,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 	};
 
 	const handleRadiusChange = (newRadius) => {
-
 		setRadius(newRadius);
 		if (coordinates) {
 			fetchAllData(coordinates.lat, coordinates.lng, newRadius);
@@ -123,8 +120,6 @@ const LocationSearch = ({ location, setLocation, coordinates, setCoordinates, ra
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-8">
-
-
 			<div className="text-center mb-12">
 				<h1 className="text-5xl sm:text-6xl font-extrabold text-[#212529] tracking-tight">Explore Nearby</h1>
 				<p className="mt-4 text-xl text-[#6C757D] max-w-2xl mx-auto">Discover the best places around you, tailored to your taste.</p>

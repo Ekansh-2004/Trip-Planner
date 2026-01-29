@@ -1,6 +1,5 @@
 // src/components/LoginPage.jsx
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
 const LoginPage = ({ onLogin }) => {
 	const [activeTab, setActiveTab] = useState("login");
@@ -25,7 +24,7 @@ const LoginPage = ({ onLogin }) => {
 		setLoading(true);
 		setError(null);
 		try {
-			const res = await fetch("http://localhost:3001/api/auth/login", {
+			const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -53,7 +52,7 @@ const LoginPage = ({ onLogin }) => {
 		setLoading(true);
 		setError(null);
 		try {
-			const res = await fetch("http://localhost:3001/api/auth/signup", {
+			const res = await fetch("${process.env.REACT_APP_API_URL}/api/auth/signup", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -114,12 +113,8 @@ const LoginPage = ({ onLogin }) => {
 				<div className="w-full max-w-md space-y-8">
 					{/* Hero Text */}
 					<div className="text-center mb-8">
-						<h2 className="text-4xl font-extrabold tracking-tight text-[#181311] mb-4">
-							Welcome to Trip Sage
-						</h2>
-						<p className="text-xl font-medium text-[#4A3B32] max-w-sm mx-auto leading-relaxed">
-							Discover the world with itineraries crafted just for you.
-						</p>
+						<h2 className="text-4xl font-extrabold tracking-tight text-[#181311] mb-4">Welcome to Trip Sage</h2>
+						<p className="text-xl font-medium text-[#4A3B32] max-w-sm mx-auto leading-relaxed">Discover the world with itineraries crafted just for you.</p>
 					</div>
 
 					{/* Card Container */}

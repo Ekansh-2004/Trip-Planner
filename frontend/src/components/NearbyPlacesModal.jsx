@@ -23,14 +23,14 @@ const NearbyPlacesModal = ({ type, lat, lng, city, userLocation, onClose }) => {
 			setError(null);
 			try {
 				const response = await axios.post(
-					`http://localhost:3001/api/places/${type}`,
+					`${process.env.REACT_APP_API_URL}/api/places/${type}`,
 					{
 						lat,
 						lng,
 						radius: 5000,
 						city: city,
 					},
-					{ withCredentials: true }
+					{ withCredentials: true },
 				);
 
 				const results = response.data.data || response.data || [];
@@ -49,20 +49,17 @@ const NearbyPlacesModal = ({ type, lat, lng, city, userLocation, onClose }) => {
 		fetchData();
 	}, [type, lat, lng, city]);
 
-
 	const handleMoreDetails = (place) => {
-
 		sessionStorage.setItem("itineraryScrollPos", window.scrollY);
-
 
 		navigate(`/place/${place.placeId || Date.now()}`, {
 			state: {
 				place,
 				type,
-				userLocation, 
+				userLocation,
 			},
 		});
-		onClose(); 
+		onClose();
 	};
 
 	const title = type === "hotels" ? "Nearby Hotels" : "Nearby Restaurants";
@@ -75,7 +72,7 @@ const NearbyPlacesModal = ({ type, lat, lng, city, userLocation, onClose }) => {
 		>
 			{/* Modal Content */}
 			<div
-				onClick={(e) => e.stopPropagation()} 
+				onClick={(e) => e.stopPropagation()}
 				className="bg-white rounded-2xl shadow-2xl w-[90%] sm:w-[80%] md:w-[60%] lg:w-[40%] max-w-xl max-h-[80vh] flex flex-col"
 			>
 				{/* Header */}

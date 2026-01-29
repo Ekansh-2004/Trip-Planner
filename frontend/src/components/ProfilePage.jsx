@@ -52,7 +52,7 @@ const ProfilePage = () => {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const [userRes, itineraryRes] = await Promise.all([fetch("http://localhost:3001/api/auth/me", { credentials: "include" }), fetch("http://localhost:3001/api/itinerary/history", { credentials: "include" })]);
+				const [userRes, itineraryRes] = await Promise.all([fetch(`${process.env.REACT_APP_API_URL}/api/auth/me`, { credentials: "include" }), fetch(`${process.env.REACT_APP_API_URL}/api/itinerary/history`, { credentials: "include" })]);
 
 				if (!userRes.ok) throw new Error(`Failed to fetch user data: ${userRes.statusText}`);
 				const userData = await userRes.json();
@@ -82,7 +82,7 @@ const ProfilePage = () => {
 		if (!confirmDelete) return;
 
 		try {
-			const response = await fetch(`http://localhost:3001/api/itinerary/${itineraryId}`, {
+			const response = await fetch(`${process.env.REACT_APP_API_URL}/api/itinerary/${itineraryId}`, {
 				method: "DELETE",
 				credentials: "include",
 			});

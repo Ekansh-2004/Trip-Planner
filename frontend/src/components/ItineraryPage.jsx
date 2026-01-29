@@ -157,11 +157,11 @@ const ItineraryPage = () => {
 			setLoading(true);
 			const location = startLocation + ", " + city;
 
-			const geoResponse = await fetch(`http://localhost:3001/api/geocode?location=${encodeURIComponent(location)}`);
+			const geoResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/geocode?location=${encodeURIComponent(location)}`);
 			const geoData = await geoResponse.json();
 			const { lat, lng } = geoData;
 
-			const response = await fetch("http://localhost:3001/api/itinerary/", {
+			const response = await fetch(`${process.env.REACT_APP_API_URL}/api/itinerary/`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -339,7 +339,7 @@ const ItineraryPage = () => {
 	const fetchCultureData = async (city, type) => {
 		try {
 			setLoadingExtra(true);
-			const response = await fetch(`http://localhost:3001/api/culture/${type}/${city}`, {
+			const response = await fetch(`${process.env.REACT_APP_API_URL}/api/culture/${type}/${city}`, {
 				credentials: "include",
 			});
 			const data = await response.json();
@@ -369,7 +369,7 @@ const ItineraryPage = () => {
 
 	const fetchTrafficData = async (originLat, originLng, destLat, destLng) => {
 		try {
-			const response = await fetch(`http://localhost:3001/api/location-info/temp?userLat=${originLat}&userLng=${originLng}&destLat=${destLat}&destLng=${destLng}`, {
+			const response = await fetch(`${process.env.REACT_APP_API_URL}/api/location-info/temp?userLat=${originLat}&userLng=${originLng}&destLat=${destLat}&destLng=${destLng}`, {
 				credentials: "include",
 			});
 
@@ -501,10 +501,13 @@ const ItineraryPage = () => {
 		console.log("🚀 Initial traffic load.");
 		refreshAllTraffic();
 
-		const intervalId = setInterval(() => {
-			console.log("🕒 Triggering scheduled refresh...");
-			refreshAllTraffic();
-		}, 30 * 60 * 1000);
+		const intervalId = setInterval(
+			() => {
+				console.log("🕒 Triggering scheduled refresh...");
+				refreshAllTraffic();
+			},
+			30 * 60 * 1000,
+		);
 
 		return () => {
 			console.log("🧹 Clearing traffic refresh interval");

@@ -17,7 +17,7 @@ const NLPPlanPage = () => {
 		setResults(null);
 
 		try {
-			const response = await fetch("http://localhost:3001/api/nlp/analyze", {
+			const response = await fetch(`${process.env.REACT_APP_API_URL}/api/nlp/analyze`, {
 				method: "POST",
 				credentials: "include",
 				headers: { "Content-Type": "application/json" },
