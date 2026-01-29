@@ -5,11 +5,11 @@ import express from "express";
 dotenv.config();
 
 import authRoutes from "./routes/authRoute.js";
+import cultureRoutes from "./routes/cultureRoute.js";
 import itineraryRoutes from "./routes/itineraryRoute.js";
 import weatherTrafficRoutes from "./routes/locationInfoRoute.js";
+import nlpRoutes from "./routes/nlpRoute.js";
 import placeRoutes from "./routes/placeRoute.js";
-import nlpRoutes from "./routes/nlpRoute.js"
-import cultureRoutes from "./routes/cultureRoute.js";
 
 import axios from "axios";
 import { connectDB } from "./config/db.js";
@@ -18,9 +18,9 @@ const app = express();
 
 app.use(
 	cors({
-		origin: "http://localhost:5173",
+		origin: ["http://localhost:5173", "http://localhost:3001", "https://trip-planner-lovat-psi.vercel.app"],
 		credentials: true,
-	})
+	}),
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
