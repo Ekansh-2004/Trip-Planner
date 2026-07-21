@@ -3,3 +3,10 @@
 .react-datepicker-portal {
 	z-index: 9999 !important;
 }
+
+@media print {
+	.app-shell {
+		background: none !important;
+		background-image: none !important;
+	}
+}

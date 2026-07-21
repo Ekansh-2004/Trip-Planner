@@ -1,5 +1,6 @@
+import crypto from "crypto";
 import Itinerary from "../models/Itinerary.js";
-import Place from "../models/Place.js"; 
+import Place from "../models/Place.js";
 import User from "../models/User.js";
 
 
@@ -155,7 +156,7 @@ export const generateItinerary = async (req, res) => {
 		}).populate("daysPlan.attractions daysPlan.morning daysPlan.evening");
 
 		if (existingItinerary) {
-			return res.json({ itinerary: existingItinerary.daysPlan });
+			return res.json({ itinerary: existingItinerary.daysPlan, itineraryId: existingItinerary._id });
 		}
 
 
@@ -270,7 +271,7 @@ export const generateItinerary = async (req, res) => {
 
 		const populatedItinerary = await Itinerary.findById(newItinerary._id).populate("daysPlan.attractions daysPlan.morning daysPlan.evening");
 
-		res.json({ itinerary: populatedItinerary.daysPlan });
+		res.json({ itinerary: populatedItinerary.daysPlan, itineraryId: populatedItinerary._id });
 	} catch (error) {
 		console.error("Error generating itinerary:", error);
 		res.status(500).json({ error: "Failed to generate itinerary" });
@@ -304,6 +305,51 @@ export const deleteItinerary = async(req,res) => {
 	} catch (error) {
 		console.error("Error deleting itinerary:", error);
 		res.status(500).json({ error: "Failed to delete itinerary" });
-	}	
+	}
 }
+
+export const shareItinerary = async (req, res) => {
+	try {
+		const { itineraryId } = req.params;
+
+		const itinerary = await Itinerary.findById(itineraryId);
+		if (!itinerary) {
+			return res.status(404).json({ error: "Itinerary not found" });
+		}
+		if (itinerary.user.toString() !== req.user._id.toString()) {
+			return res.status(403).json({ error: "Not authorized to share this itinerary" });
+		}
+
+		if (!itinerary.shareToken) {
+			itinerary.shareToken = crypto.randomBytes(16).toString("hex");
+			await itinerary.save();
+		}
+
+		res.status(200).json({ shareToken: itinerary.shareToken });
+	} catch (error) {
+		console.error("Error sharing itinerary:", error);
+		res.status(500).json({ error: "Failed to share itinerary" });
+	}
+};
+
+export const getPublicItinerary = async (req, res) => {
+	try {
+		const { shareToken } = req.params;
+
+		const itinerary = await Itinerary.findOne({ shareToken }).populate("daysPlan.attractions daysPlan.morning daysPlan.evening").select("city days daysPlan startLocation createdAt");
+		if (!itinerary) {
+			return res.status(404).json({ error: "Shared itinerary not found" });
+		}
+
+		res.status(200).json({
+			city: itinerary.city,
+			days: itinerary.days,
+			daysPlan: itinerary.daysPlan,
+			createdAt: itinerary.createdAt,
+		});
+	} catch (error) {
+		console.error("Error fetching public itinerary:", error);
+		res.status(500).json({ error: "Failed to fetch shared itinerary" });
+	}
+};
 

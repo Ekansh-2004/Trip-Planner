@@ -9,7 +9,7 @@ const Navbar = ({ authUser, onLogout }) => {
 	};
 
 	return (
-		<header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-[#DEE2E6]">
+		<header className="print:hidden sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-[#DEE2E6]">
 			<div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div className="flex items-center justify-between h-20">
 					<Link

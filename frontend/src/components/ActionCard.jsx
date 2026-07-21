@@ -10,8 +10,8 @@ export const ActionCard = ({ title, subtitle, buttonText, onClick }) => {
 					<p className="text-sm text-orange-600">{subtitle}</p>
 				</div>
 				<button
-					onClick={onClick} 
-					className="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors flex-shrink-0"
+					onClick={onClick}
+					className="print:hidden bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors flex-shrink-0"
 				>
 					{buttonText}
 				</button>

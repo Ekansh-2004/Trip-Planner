@@ -11,6 +11,7 @@ import Navbar from "./components/Navbar";
 import NLPPlanPage from "./components/NLPPlanPage";
 import PlaceDetailsPage from "./components/PlaceDetailsPage";
 import ProfilePage from "./components/ProfilePage";
+import PublicItineraryPage from "./components/PublicItineraryPage";
 
 const AppLayout = ({ authUser, onLogout }) => {
 	const location = useLocation();
@@ -25,7 +26,7 @@ const AppLayout = ({ authUser, onLogout }) => {
 
 	return (
 		<div
-			className="min-h-screen"
+			className="app-shell min-h-screen"
 			style={getPageStyle()}
 		>
 			<Navbar
@@ -116,6 +117,10 @@ function App() {
 							path="/login"
 							element={<LoginPage onLogin={handleLogin} />}
 						/>
+						<Route
+							path="/share/:token"
+							element={<PublicItineraryPage />}
+						/>
 
 						<Route
 							path="*"
@@ -163,6 +168,10 @@ function App() {
 						<Route
 							path="/profile"
 							element={<ProfilePage />}
+						/>
+						<Route
+							path="/share/:token"
+							element={<PublicItineraryPage />}
 						/>
 						<Route
 							path="*"

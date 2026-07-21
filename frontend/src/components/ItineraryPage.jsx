@@ -70,6 +70,10 @@ const ItineraryPage = () => {
 	const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
 	const [lastRefreshTime, setLastRefreshTime] = useState(null);
 
+	const [itineraryId, setItineraryId] = useState(null);
+	const [isSharing, setIsSharing] = useState(false);
+	const [shareStatus, setShareStatus] = useState(null);
+
 	const itineraryDataRef = useRef(itineraryData);
 	useEffect(() => {
 		itineraryDataRef.current = itineraryData;
@@ -85,6 +89,7 @@ const ItineraryPage = () => {
 	useEffect(() => {
 		if (existingHistoryItem) {
 			setLoading(true);
+			setItineraryId(existingHistoryItem._id || null);
 			if (existingHistoryItem.daysPlan && existingHistoryItem.city) {
 				buildItineraryTimeline(existingHistoryItem.daysPlan, existingHistoryItem.city, null)
 					.catch((err) => {
@@ -111,7 +116,9 @@ const ItineraryPage = () => {
 		const cachedData = localStorage.getItem(cacheKey);
 
 		if (cachedData) {
-			setItineraryData(JSON.parse(cachedData));
+			const parsedCache = JSON.parse(cachedData);
+			setItineraryData(parsedCache);
+			setItineraryId(parsedCache.itineraryId || null);
 			setLoading(false);
 		} else {
 			fetchItinerary(city, startLocation, startDate, endDate);
@@ -185,8 +192,9 @@ const ItineraryPage = () => {
 
 			if (data.error) throw new Error(data.error);
 
+			setItineraryId(data.itineraryId || null);
 			const cacheInfo = { startLocation, startDate, endDate };
-			await buildItineraryTimeline(data.itinerary, city, cacheInfo);
+			await buildItineraryTimeline(data.itinerary, city, cacheInfo, data.itineraryId || null);
 		} catch (err) {
 			console.error("Error fetching itinerary:", err);
 			setError(err.message);
@@ -200,7 +208,7 @@ const ItineraryPage = () => {
 		return diff > 0 ? diff : 1;
 	};
 
-	const buildItineraryTimeline = async (backendItinerary, tripCity, cacheInfo = null) => {
+	const buildItineraryTimeline = async (backendItinerary, tripCity, cacheInfo = null, itineraryIdForCache = null) => {
 		const days = backendItinerary.map((_, idx) => `Day ${idx + 1}`);
 		const timeline = {};
 
@@ -335,6 +343,7 @@ const ItineraryPage = () => {
 			city: tripCity,
 			days,
 			timeline,
+			itineraryId: itineraryIdForCache,
 		};
 
 		setItineraryData(finalItinerary);
@@ -508,6 +517,30 @@ const ItineraryPage = () => {
 		setIsRefreshingTraffic(false);
 	};
 
+	const handleShare = async () => {
+		if (!itineraryId) return;
+		setIsSharing(true);
+		setShareStatus(null);
+		try {
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/itinerary/${itineraryId}/share`, {
+				method: "POST",
+				credentials: "include",
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error || "Failed to create share link");
+
+			const shareUrl = `${window.location.origin}/share/${data.shareToken}`;
+			await navigator.clipboard.writeText(shareUrl);
+			setShareStatus("Link copied to clipboard!");
+		} catch (err) {
+			console.error("Error sharing itinerary:", err);
+			setShareStatus("Could not create share link.");
+		} finally {
+			setIsSharing(false);
+			setTimeout(() => setShareStatus(null), 4000);
+		}
+	};
+
 	// REMOVED: Auto-refresh interval - now only manual refresh
 	// Load traffic data once on initial load
 	useEffect(() => {
@@ -544,43 +577,60 @@ const ItineraryPage = () => {
 
 	return (
 		<div>
-			<main className="max-w-4xl mx-auto px-8 py-8 mt-8 bg-white rounded-xl shadow-lg border border-[#DEE2E6]">
+			<main className="max-w-4xl mx-auto px-8 py-8 mt-8 bg-white rounded-xl shadow-lg border border-[#DEE2E6] print:shadow-none print:border-0 print:mt-0 print:max-w-none">
 				<div className="flex items-center justify-between mb-4">
 					<h1 className="text-4xl font-bold text-gray-800">{itineraryData.tripTitle}</h1>
-					
+
 					{/* NEW: Manual Refresh Button */}
 					{activeTab === "Itinerary" && (
-						<button
-							onClick={refreshAllTraffic}
-							disabled={isRefreshingTraffic}
-							className="flex items-center gap-2 px-4 py-2 bg-[#ef5006] text-white rounded-lg hover:bg-[#d64506] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							<svg 
-								className={`w-5 h-5 ${isRefreshingTraffic ? 'animate-spin' : ''}`}
-								fill="none" 
-								stroke="currentColor" 
-								viewBox="0 0 24 24"
+						<div className="print:hidden flex items-center gap-2">
+							<button
+								onClick={() => window.print()}
+								className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
 							>
-								<path 
-									strokeLinecap="round" 
-									strokeLinejoin="round" 
-									strokeWidth={2} 
-									d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
-								/>
-							</svg>
-							{isRefreshingTraffic ? 'Refreshing...' : 'Refresh Traffic'}
-						</button>
+								Export PDF
+							</button>
+							<button
+								onClick={handleShare}
+								disabled={isSharing || !itineraryId}
+								title={!itineraryId ? "Share link isn't available for this itinerary yet" : "Copy a shareable read-only link"}
+								className="flex items-center gap-2 px-4 py-2 bg-white border border-[#ef5006] text-[#ef5006] rounded-lg hover:bg-[#ef5006]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{isSharing ? "Sharing..." : "Share"}
+							</button>
+							<button
+								onClick={refreshAllTraffic}
+								disabled={isRefreshingTraffic}
+								className="flex items-center gap-2 px-4 py-2 bg-[#ef5006] text-white rounded-lg hover:bg-[#d64506] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								<svg
+									className={`w-5 h-5 ${isRefreshingTraffic ? 'animate-spin' : ''}`}
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+									/>
+								</svg>
+								{isRefreshingTraffic ? 'Refreshing...' : 'Refresh Traffic'}
+							</button>
+						</div>
 					)}
 				</div>
-				
-				{/* Show last refresh time */}
+
+				{/* Show last refresh time / share status */}
+				{shareStatus && activeTab === "Itinerary" && <p className="print:hidden text-sm text-[#ef5006] font-semibold mb-4">{shareStatus}</p>}
 				{lastRefreshTime && activeTab === "Itinerary" && (
-					<p className="text-sm text-gray-500 mb-4">
+					<p className="print:hidden text-sm text-gray-500 mb-4">
 						Last updated: {lastRefreshTime.toLocaleTimeString()}
 					</p>
 				)}
 
-				<div className="relative flex gap-2 border-b border-gray-200 mb-6 bg-gray-100 p-1.5 rounded-full">
+				<div className="print:hidden relative flex gap-2 border-b border-gray-200 mb-6 bg-gray-100 p-1.5 rounded-full">
 					{["Itinerary", "Cuisine", "Activities"].map((tab) => (
 						<button
 							key={tab}

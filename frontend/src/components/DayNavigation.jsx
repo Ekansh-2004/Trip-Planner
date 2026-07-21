@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 export const DayNavigation = ({ days, activeDay, onDaySelect }) => {
 	return (
 
-		<div className="sticky top-[80px] z-10 bg-white/90 backdrop-blur-sm pt-4 pb-2 -mx-4 px-4">
+		<div className="print:hidden sticky top-[80px] z-10 bg-white/90 backdrop-blur-sm pt-4 pb-2 -mx-4 px-4">
 
 			<div className="relative flex border-b border-gray-200">
 				{days.map((day) => (

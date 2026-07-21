@@ -35,6 +35,7 @@ const ItinerarySchema = new mongoose.Schema({
 	startDate: { type: Date, required: false },
 	days: { type: Number, required: true },
 	daysPlan: [DayPlanSchema],
+	shareToken: { type: String, unique: true, sparse: true, index: true },
 	createdAt: { type: Date, default: Date.now },
 	updatedAt: { type: Date, default: Date.now },
 });
