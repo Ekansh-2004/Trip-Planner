@@ -41,6 +41,10 @@ app.get("/api/geocode", async (req, res) => {
 		const geoRes = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
 			params: { address: location, key: process.env.GOOGLE_API_KEY },
 		});
+		if (geoRes.data.status !== "OK") {
+			console.error("Geocoding failed:", geoRes.data.status, geoRes.data.error_message);
+			return res.status(502).json({ error: `Geocoding failed: ${geoRes.data.error_message || geoRes.data.status}` });
+		}
 		const { lat, lng } = geoRes.data.results[0].geometry.location;
 		res.json({ lat, lng });
 	} catch (err) {

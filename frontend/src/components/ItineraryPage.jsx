@@ -254,11 +254,12 @@ const ItineraryPage = () => {
 					details: {
 						title: "☕ Lunch Break",
 						subtitle: "Explore nearby restaurants",
+						buttonText: "Find Restaurants",
+						actionType: "restaurants",
+						lat: lastAttraction?.latitude,
+						lng: lastAttraction?.longitude,
+						city: tripCity,
 					},
-					actionType: "restaurant",
-					lat: lastAttraction?.latitude,
-					lng: lastAttraction?.longitude,
-					city: tripCity,
 				});
 			}
 
@@ -304,11 +305,12 @@ const ItineraryPage = () => {
 					details: {
 						title: "🍽️ Dinner Spot",
 						subtitle: "Find places for dinner",
+						buttonText: "Find Restaurants",
+						actionType: "restaurants",
+						lat: lastAttraction?.latitude,
+						lng: lastAttraction?.longitude,
+						city: tripCity,
 					},
-					actionType: "restaurant",
-					lat: lastAttraction?.latitude,
-					lng: lastAttraction?.longitude,
-					city: tripCity,
 				});
 
 				dayTimeline.push({
@@ -316,11 +318,12 @@ const ItineraryPage = () => {
 					details: {
 						title: "🏨 Find Hotels Nearby",
 						subtitle: "Rest for the night",
+						buttonText: "Find Hotels",
+						actionType: "hotels",
+						lat: lastAttraction?.latitude,
+						lng: lastAttraction?.longitude,
+						city: tripCity,
 					},
-					actionType: "hotel",
-					lat: lastAttraction?.latitude,
-					lng: lastAttraction?.longitude,
-					city: tripCity,
 				});
 			}
 
@@ -373,22 +376,22 @@ const ItineraryPage = () => {
 		setLoadingExtra(true);
 		try {
 			const [cuisinesRes, activitiesRes] = await Promise.all([
-				fetch(`${import.meta.env.VITE_API_URL}/api/cuisines/${encodeURIComponent(city)}`, {
+				fetch(`${import.meta.env.VITE_API_URL}/api/culture/cuisine/${encodeURIComponent(city)}`, {
 					credentials: "include"
 				}),
-				fetch(`${import.meta.env.VITE_API_URL}/api/activities/${encodeURIComponent(city)}`, {
+				fetch(`${import.meta.env.VITE_API_URL}/api/culture/activities/${encodeURIComponent(city)}`, {
 					credentials: "include"
 				}),
 			]);
 
 			if (cuisinesRes.ok) {
 				const cuisinesData = await cuisinesRes.json();
-				setCuisines(cuisinesData.cuisines || []);
+				setCuisines(cuisinesData || []);
 			}
 
 			if (activitiesRes.ok) {
 				const activitiesData = await activitiesRes.json();
-				setActivities(activitiesData.activities || []);
+				setActivities(activitiesData || []);
 			}
 		} catch (error) {
 			console.error("Error loading extra data:", error);
@@ -694,7 +697,7 @@ const ItineraryPage = () => {
 										className="group relative w-full h-64 md:h-72 bg-gray-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
 									>
 										<img
-											src={item.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(item.name)},food,india`}
+											src={item.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(item.title)},food,india`}
 											alt={item.title}
 											className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
 										/>
