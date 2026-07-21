@@ -7,15 +7,14 @@ A full-stack travel planning app that lets users search destinations, build itin
 ```
 Trip-Planner/
 ├── backend/            Express + MongoDB REST API
-├── frontend/           React (Vite) single-page app
-└── python_nlp_service/ Flask + spaCy microservice for natural-language trip queries
+└── frontend/           React (Vite) single-page app
 ```
 
 ## Tech Stack
 
 - **Frontend:** React 19, Vite, React Router, Tailwind CSS, Framer Motion, Google Maps React Wrapper
 - **Backend:** Node.js, Express 5, MongoDB (Mongoose), JWT auth (cookie-based)
-- **NLP Service:** Python, Flask, spaCy
+- **NLP:** Groq-hosted LLM (`llama-3.3-70b-versatile`) for structured extraction from natural-language trip queries
 - **External APIs:** Google Geocoding, Places, Distance Matrix, and Weather APIs
 
 ## Features
@@ -26,12 +25,11 @@ Trip-Planner/
 - Combined weather + traffic info for a place
 - Itinerary generation, history, and deletion
 - City-based cuisine and activity recommendations
-- Natural-language trip query parsing (e.g. "a relaxing beach trip") via the Python NLP service
+- Natural-language trip query parsing (e.g. "a relaxing beach trip") via a Groq-hosted LLM
 
 ## Prerequisites
 
 - Node.js 18+
-- Python 3.9+
 - A MongoDB instance (local or Atlas)
 - A Google Cloud API key with the **Geocoding**, **Places**, **Distance Matrix**, and **Weather** APIs enabled
 
@@ -67,26 +65,14 @@ Then start the dev server:
 npm run dev              # starts on http://localhost:5173
 ```
 
-### 3. Python NLP Service
-
-```bash
-cd python_nlp_service
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-python nlp_service.py       # starts on http://localhost:5001
-```
-
-The backend's `/api/nlp/analyze` route proxies requests to this service, so it must be running for NLP-based trip queries to work.
+The backend's `/api/nlp/analyze` route calls the Groq API directly — set `GROQ_API_KEY` in `backend/.env` (see [backend/.env.example](backend/.env.example)) for NLP-based trip queries to work.
 
 ## Running the Full Stack
 
-Start all three services in separate terminals, in this order:
+Start both services in separate terminals:
 
-1. Python NLP service (`localhost:5001`)
-2. Backend API (`localhost:3001`)
-3. Frontend dev server (`localhost:5173`)
+1. Backend API (`localhost:3001`)
+2. Frontend dev server (`localhost:5173`)
 
 ## API Overview
 
