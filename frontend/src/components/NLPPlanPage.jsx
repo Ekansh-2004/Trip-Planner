@@ -8,6 +8,7 @@ const NLPPlanPage = () => {
 	const [loading, setLoading] = useState(false);
 	const [results, setResults] = useState(null);
 	const [error, setError] = useState(null);
+	const [manualDuration, setManualDuration] = useState("");
 	const navigate = useNavigate();
 
 	const handleAnalyze = async () => {
@@ -15,6 +16,7 @@ const NLPPlanPage = () => {
 		setLoading(true);
 		setError(null);
 		setResults(null);
+		setManualDuration("");
 
 		try {
 			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/nlp/analyze`, {
@@ -94,17 +96,47 @@ const NLPPlanPage = () => {
 								<h3 className="text-xl font-bold text-gray-800 mb-3">{results.message}</h3>
 
 								{results.suggestions?.length > 0 ? (
-									<div className="flex flex-wrap justify-center gap-3">
-										{results.suggestions.map((place, idx) => (
-											<button
-												key={idx}
-												onClick={() => navigate("/manual-plan", { state: { destination: place } })}
-												className="bg-white border border-gray-200 px-5 py-3 rounded-xl shadow-sm hover:shadow-md transition hover:bg-[#ef5006]/10"
-											>
-												<span className="text-[#ef5006] font-semibold">{place}</span>
-											</button>
-										))}
-									</div>
+									<>
+										{!results.extracted?.duration_days && (
+											<div className="mb-4 flex items-center justify-center gap-2">
+												<label
+													htmlFor="manual-duration"
+													className="text-sm text-gray-600"
+												>
+													How many days is your trip? (optional)
+												</label>
+												<input
+													id="manual-duration"
+													type="number"
+													min="1"
+													max="30"
+													value={manualDuration}
+													onChange={(e) => setManualDuration(e.target.value)}
+													placeholder="e.g. 4"
+													className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-[#ef5006]"
+												/>
+											</div>
+										)}
+										<div className="flex flex-wrap justify-center gap-3">
+											{results.suggestions.map((place, idx) => (
+												<button
+													key={idx}
+													onClick={() =>
+														navigate("/manual-plan", {
+															state: {
+																destination: place,
+																durationDays:
+																	results.extracted?.duration_days || (manualDuration ? Number(manualDuration) : null),
+															},
+														})
+													}
+													className="bg-white border border-gray-200 px-5 py-3 rounded-xl shadow-sm hover:shadow-md transition hover:bg-[#ef5006]/10"
+												>
+													<span className="text-[#ef5006] font-semibold">{place}</span>
+												</button>
+											))}
+										</div>
+									</>
 								) : (
 									<p className="text-gray-500 italic">No suggestions found for your input.</p>
 								)}

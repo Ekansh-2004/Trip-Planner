@@ -26,12 +26,21 @@ const ManualPlanPage = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const destinationFromNLP = location.state?.destination || "";
-	const [step, setStep] = useState(1);
+	const durationDaysFromNLP = location.state?.durationDays || null;
+	const [step, setStep] = useState(destinationFromNLP ? 2 : 1);
 	const [destination, setDestination] = useState(destinationFromNLP);
 
 	const [startingPoint, setStartingPoint] = useState("");
-	const [startDate, setStartDate] = useState(null);
-	const [endDate, setEndDate] = useState(null);
+	const initialDates = (() => {
+		if (!durationDaysFromNLP || durationDaysFromNLP < 1) return { start: null, end: null };
+		const start = new Date();
+		start.setDate(start.getDate() + 1);
+		const end = new Date(start);
+		end.setDate(end.getDate() + durationDaysFromNLP - 1);
+		return { start, end };
+	})();
+	const [startDate, setStartDate] = useState(initialDates.start);
+	const [endDate, setEndDate] = useState(initialDates.end);
 
 	// 1. Create refs for inputs
 	const destinationRef = useRef(null);

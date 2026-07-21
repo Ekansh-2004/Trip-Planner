@@ -1,9 +1,39 @@
+import Groq from "groq-sdk";
 import { getGroqClient } from "../utils/groqClient.js";
 import Place from "../models/Place.js";
 
 const VALID_CATEGORIES = ["hill_station", "beach", "religious", "adventure", "nature", "historical", "urban", "unknown"];
 const VALID_BUDGET_TIERS = ["budget", "mid-range", "luxury"];
 const VALID_GROUP_TYPES = ["solo", "couple", "family", "friends"];
+
+const MAX_QUERY_LENGTH = 500;
+
+// Caches full responses for identical (normalized) queries so repeat lookups
+// skip the Groq round-trip. Capped and TTL'd since this is in-process memory,
+// not a real cache store — fine for this app's traffic, not meant to survive restarts.
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_MAX_ENTRIES = 200;
+const responseCache = new Map();
+
+const normalizeQuery = (text) => text.trim().toLowerCase().replace(/\s+/g, " ");
+
+const getCached = (key) => {
+	const entry = responseCache.get(key);
+	if (!entry) return null;
+	if (Date.now() > entry.expiresAt) {
+		responseCache.delete(key);
+		return null;
+	}
+	return entry.data;
+};
+
+const setCached = (key, data) => {
+	if (responseCache.size >= CACHE_MAX_ENTRIES) {
+		const oldestKey = responseCache.keys().next().value;
+		responseCache.delete(oldestKey);
+	}
+	responseCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+};
 
 const CATEGORY_KEYWORDS = {
 	beach: ["beach"],
@@ -64,17 +94,43 @@ const findCityInDB = async (cityHint) => {
 export const analyzeTravelQuery = async (req, res) => {
 	try {
 		const { text } = req.body;
-		if (!text) return res.status(400).json({ error: "No text provided" });
+		if (!text || typeof text !== "string" || !text.trim()) {
+			return res.status(400).json({ error: "No text provided" });
+		}
+		if (text.length > MAX_QUERY_LENGTH) {
+			return res.status(400).json({ error: `Query is too long (max ${MAX_QUERY_LENGTH} characters)` });
+		}
 
-		const completion = await getGroqClient().chat.completions.create({
-			model: "llama-3.3-70b-versatile",
-			temperature: 0,
-			response_format: { type: "json_object" },
-			messages: [
-				{ role: "system", content: SYSTEM_PROMPT },
-				{ role: "user", content: text },
-			],
-		});
+		const cacheKey = normalizeQuery(text);
+		const cached = getCached(cacheKey);
+		if (cached) {
+			return res.json(cached);
+		}
+
+		let completion;
+		try {
+			completion = await getGroqClient().chat.completions.create({
+				model: "llama-3.3-70b-versatile",
+				temperature: 0,
+				response_format: { type: "json_object" },
+				messages: [
+					{ role: "system", content: SYSTEM_PROMPT },
+					{ role: "user", content: text },
+				],
+			});
+		} catch (groqErr) {
+			if (groqErr instanceof Groq.APIConnectionTimeoutError) {
+				return res.status(504).json({ error: "Language model took too long to respond. Please try again." });
+			}
+			if (groqErr instanceof Groq.RateLimitError) {
+				return res.status(429).json({ error: "Too many requests right now. Please try again shortly." });
+			}
+			if (groqErr instanceof Groq.APIError) {
+				console.error("Groq API error:", groqErr.status, groqErr.message);
+				return res.status(502).json({ error: "Language model service is currently unavailable." });
+			}
+			throw groqErr;
+		}
 
 		const raw = completion.choices?.[0]?.message?.content;
 		if (!raw) {
@@ -105,27 +161,27 @@ export const analyzeTravelQuery = async (req, res) => {
 
 		const suggestions = [...new Set([...(namedCity ? [namedCity] : []), ...categorySuggestions])].slice(0, 5);
 
-		if (suggestions.length > 0) {
-			const message = namedCity
-				? `${namedCity} has attractions in our database that match your trip — here's where to start:`
-				: `Here are some popular ${category.replace("_", " ")} destinations we have itinerary data for:`;
+		const responseBody =
+			suggestions.length > 0
+				? {
+						user_input: text,
+						detected_category: category,
+						extracted,
+						message: namedCity
+							? `${namedCity} has attractions in our database that match your trip — here's where to start:`
+							: `Here are some popular ${category.replace("_", " ")} destinations we have itinerary data for:`,
+						suggestions,
+					}
+				: {
+						user_input: text,
+						detected_category: category,
+						extracted,
+						message: "We don't have matching destinations in our database yet for that request.",
+						suggestions: [],
+					};
 
-			return res.json({
-				user_input: text,
-				detected_category: category,
-				extracted,
-				message,
-				suggestions,
-			});
-		}
-
-		return res.json({
-			user_input: text,
-			detected_category: category,
-			extracted,
-			message: "We don't have matching destinations in our database yet for that request.",
-			suggestions: [],
-		});
+		setCached(cacheKey, responseBody);
+		return res.json(responseBody);
 	} catch (error) {
 		console.error("Error in NLP route:", error.message);
 		res.status(500).json({ error: "Internal server error" });
