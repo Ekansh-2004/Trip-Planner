@@ -135,9 +135,12 @@ const ItineraryPage = () => {
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareStatus, setShareStatus] = useState(null);
 
-	// Drag-and-drop day editing (UI + local state only for now — not yet persisted to the backend)
+	// Drag-and-drop day editing
 	const [editMode, setEditMode] = useState(false);
 	const [attractionsByDay, setAttractionsByDay] = useState({});
+	const [initialAttractionsByDay, setInitialAttractionsByDay] = useState({});
+	const [isSavingOrder, setIsSavingOrder] = useState(false);
+	const [saveOrderStatus, setSaveOrderStatus] = useState(null);
 	const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
 	const itineraryDataRef = useRef(itineraryData);
@@ -424,6 +427,7 @@ const ItineraryPage = () => {
 
 		setItineraryData(finalItinerary);
 		setAttractionsByDay(newAttractionsByDay);
+		setInitialAttractionsByDay(newAttractionsByDay);
 		setEditMode(false);
 		setLastRefreshTime(new Date());
 
@@ -535,6 +539,53 @@ const ItineraryPage = () => {
 
 			return { ...prev, [activeDayKey]: activeItems, [overDayKey]: overItems };
 		});
+	};
+
+	const isOrderDirty = (itineraryData?.days || []).some((dayKey) => {
+		const current = (attractionsByDay[dayKey] || []).map((a) => a.id).join(",");
+		const initial = (initialAttractionsByDay[dayKey] || []).map((a) => a.id).join(",");
+		return current !== initial;
+	});
+
+	const handleToggleEditMode = () => {
+		setEditMode((prev) => {
+			if (prev) {
+				// Leaving edit mode without saving — discard any unsaved drag changes
+				setAttractionsByDay(initialAttractionsByDay);
+			}
+			return !prev;
+		});
+	};
+
+	const handleSaveOrder = async () => {
+		if (!itineraryId || !itineraryData) return;
+		setIsSavingOrder(true);
+		setSaveOrderStatus(null);
+		try {
+			const daysPlan = itineraryData.days.map((dayKey, idx) => ({
+				day: idx + 1,
+				attractions: (attractionsByDay[dayKey] || []).map((a) => a.id),
+			}));
+
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/itinerary/${itineraryId}`, {
+				method: "PUT",
+				credentials: "include",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ daysPlan }),
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error || "Failed to save changes");
+
+			const cacheInfo = city && startLocation ? { startLocation, startDate, endDate } : null;
+			await buildItineraryTimeline(data.itinerary, itineraryData.city, cacheInfo, itineraryId);
+			setSaveOrderStatus("Changes saved!");
+		} catch (err) {
+			console.error("Error saving itinerary order:", err);
+			setSaveOrderStatus(err.message || "Could not save changes.");
+		} finally {
+			setIsSavingOrder(false);
+			setTimeout(() => setSaveOrderStatus(null), 4000);
+		}
 	};
 
 	const handleDaySelect = (dayKey) => {
@@ -695,8 +746,17 @@ const ItineraryPage = () => {
 					{/* NEW: Manual Refresh Button */}
 					{activeTab === "Itinerary" && (
 						<div className="print:hidden flex items-center gap-2">
+							{editMode && (
+								<button
+									onClick={handleSaveOrder}
+									disabled={isSavingOrder || !isOrderDirty}
+									className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{isSavingOrder ? "Saving..." : "Save Changes"}
+								</button>
+							)}
 							<button
-								onClick={() => setEditMode((prev) => !prev)}
+								onClick={handleToggleEditMode}
 								className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
 									editMode ? "bg-gray-800 text-white border-gray-800 hover:bg-gray-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
 								}`}
@@ -742,6 +802,7 @@ const ItineraryPage = () => {
 				</div>
 
 				{/* Show last refresh time / share status */}
+				{saveOrderStatus && activeTab === "Itinerary" && <p className="print:hidden text-sm text-green-700 font-semibold mb-4">{saveOrderStatus}</p>}
 				{shareStatus && activeTab === "Itinerary" && <p className="print:hidden text-sm text-[#ef5006] font-semibold mb-4">{shareStatus}</p>}
 				{lastRefreshTime && activeTab === "Itinerary" && (
 					<p className="print:hidden text-sm text-gray-500 mb-4">
@@ -770,7 +831,7 @@ const ItineraryPage = () => {
 
 				{activeTab === "Itinerary" && editMode && (
 					<div className="print:hidden">
-						<p className="text-sm text-gray-500 mb-4">Drag attractions to reorder within a day or move them between days. Changes here aren't saved yet.</p>
+						<p className="text-sm text-gray-500 mb-4">Drag attractions to reorder within a day or move them between days, then click "Save Changes" above.</p>
 						<DndContext
 							sensors={dndSensors}
 							collisionDetection={closestCenter}
