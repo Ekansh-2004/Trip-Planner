@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { closestCenter, DndContext, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ActionCard } from "./ActionCard";
 import { ActivityCard } from "./ActivityCard";
 import { DayNavigation } from "./DayNavigation";
@@ -10,6 +13,64 @@ import NearbyPlacesModal from "./NearbyPlacesModal";
 import { TravelConnector } from "./TravelConnector";
 
 import { motion } from "framer-motion";
+
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1564507592333-c60657eea523";
+
+const SortableAttraction = ({ attraction }) => {
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: attraction.id });
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+		opacity: isDragging ? 0.4 : 1,
+	};
+
+	return (
+		<div
+			ref={setNodeRef}
+			style={style}
+			{...attributes}
+			{...listeners}
+			className="bg-white rounded-xl shadow p-3 mb-3 flex items-center gap-3 cursor-grab active:cursor-grabbing border border-gray-200 touch-none"
+		>
+			<img
+				src={attraction.image || FALLBACK_IMAGE}
+				alt={attraction.name}
+				className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+			/>
+			<div className="min-w-0">
+				<p className="font-semibold text-gray-800 truncate">{attraction.name}</p>
+				<p className="text-xs text-gray-500">{attraction.entry_fee || "N/A"}</p>
+			</div>
+		</div>
+	);
+};
+
+const DroppableDayColumn = ({ dayKey, attractions }) => {
+	const { setNodeRef } = useDroppable({ id: dayKey });
+
+	return (
+		<div
+			ref={setNodeRef}
+			className="bg-gray-50 rounded-xl p-4 flex-1 min-w-[260px]"
+		>
+			<h3 className="font-bold text-gray-700 mb-3">{dayKey}</h3>
+			<SortableContext
+				items={attractions.map((a) => a.id)}
+				strategy={verticalListSortingStrategy}
+			>
+				<div className="min-h-[80px]">
+					{attractions.map((attraction) => (
+						<SortableAttraction
+							key={attraction.id}
+							attraction={attraction}
+						/>
+					))}
+					{attractions.length === 0 && <p className="text-sm text-gray-400 italic">Drop an attraction here</p>}
+				</div>
+			</SortableContext>
+		</div>
+	);
+};
 
 const containerVariants = {
 	hidden: { opacity: 0 },
@@ -73,6 +134,11 @@ const ItineraryPage = () => {
 	const [itineraryId, setItineraryId] = useState(null);
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareStatus, setShareStatus] = useState(null);
+
+	// Drag-and-drop day editing (UI + local state only for now — not yet persisted to the backend)
+	const [editMode, setEditMode] = useState(false);
+	const [attractionsByDay, setAttractionsByDay] = useState({});
+	const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
 	const itineraryDataRef = useRef(itineraryData);
 	useEffect(() => {
@@ -211,11 +277,21 @@ const ItineraryPage = () => {
 	const buildItineraryTimeline = async (backendItinerary, tripCity, cacheInfo = null, itineraryIdForCache = null) => {
 		const days = backendItinerary.map((_, idx) => `Day ${idx + 1}`);
 		const timeline = {};
+		const newAttractionsByDay = {};
 
 		for (let dayIndex = 0; dayIndex < backendItinerary.length; dayIndex++) {
 			const dayKey = `Day ${dayIndex + 1}`;
 			const dayData = backendItinerary[dayIndex];
 			const morningAttractions = dayData.morning || [];
+
+			newAttractionsByDay[dayKey] = (dayData.attractions || []).map((attraction) => ({
+				id: attraction._id,
+				name: attraction.name,
+				image: attraction.image,
+				entry_fee: attraction.entry_fee,
+				opening_time: attraction.opening_time,
+				closing_time: attraction.closing_time,
+			}));
 			const eveningAttractions = dayData.evening || [];
 			const dayTimeline = [];
 			let lastAttraction = null;
@@ -347,6 +423,8 @@ const ItineraryPage = () => {
 		};
 
 		setItineraryData(finalItinerary);
+		setAttractionsByDay(newAttractionsByDay);
+		setEditMode(false);
 		setLastRefreshTime(new Date());
 
 		if (cacheInfo) {
@@ -424,6 +502,39 @@ const ItineraryPage = () => {
 
 		const userLocation = { lat, lng };
 		setModalContent({ type: actionType, lat, lng, city, userLocation });
+	};
+
+	const findDayContainingAttraction = (attractionId) => {
+		if (attractionsByDay[attractionId]) return attractionId;
+		return Object.keys(attractionsByDay).find((dayKey) => attractionsByDay[dayKey].some((a) => a.id === attractionId));
+	};
+
+	const handleDragEnd = (event) => {
+		const { active, over } = event;
+		if (!over) return;
+
+		const activeDayKey = findDayContainingAttraction(active.id);
+		const overDayKey = findDayContainingAttraction(over.id) || over.id;
+		if (!activeDayKey || !overDayKey || !attractionsByDay[overDayKey]) return;
+
+		setAttractionsByDay((prev) => {
+			const activeItems = [...prev[activeDayKey]];
+			const activeIndex = activeItems.findIndex((a) => a.id === active.id);
+			if (activeIndex === -1) return prev;
+
+			if (activeDayKey === overDayKey) {
+				const overIndex = activeItems.findIndex((a) => a.id === over.id);
+				if (overIndex === -1 || overIndex === activeIndex) return prev;
+				return { ...prev, [activeDayKey]: arrayMove(activeItems, activeIndex, overIndex) };
+			}
+
+			const [movedAttraction] = activeItems.splice(activeIndex, 1);
+			const overItems = [...prev[overDayKey]];
+			const overIndex = overItems.findIndex((a) => a.id === over.id);
+			overItems.splice(overIndex === -1 ? overItems.length : overIndex, 0, movedAttraction);
+
+			return { ...prev, [activeDayKey]: activeItems, [overDayKey]: overItems };
+		});
 	};
 
 	const handleDaySelect = (dayKey) => {
@@ -585,6 +696,14 @@ const ItineraryPage = () => {
 					{activeTab === "Itinerary" && (
 						<div className="print:hidden flex items-center gap-2">
 							<button
+								onClick={() => setEditMode((prev) => !prev)}
+								className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+									editMode ? "bg-gray-800 text-white border-gray-800 hover:bg-gray-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+								}`}
+							>
+								{editMode ? "Done Editing" : "Edit Order"}
+							</button>
+							<button
 								onClick={() => window.print()}
 								className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
 							>
@@ -649,7 +768,28 @@ const ItineraryPage = () => {
 					))}
 				</div>
 
-				{activeTab === "Itinerary" && (
+				{activeTab === "Itinerary" && editMode && (
+					<div className="print:hidden">
+						<p className="text-sm text-gray-500 mb-4">Drag attractions to reorder within a day or move them between days. Changes here aren't saved yet.</p>
+						<DndContext
+							sensors={dndSensors}
+							collisionDetection={closestCenter}
+							onDragEnd={handleDragEnd}
+						>
+							<div className="flex gap-4 flex-wrap">
+								{itineraryData.days.map((dayKey) => (
+									<DroppableDayColumn
+										key={dayKey}
+										dayKey={dayKey}
+										attractions={attractionsByDay[dayKey] || []}
+									/>
+								))}
+							</div>
+						</DndContext>
+					</div>
+				)}
+
+				{activeTab === "Itinerary" && !editMode && (
 					<motion.div
 						key="itinerary-content"
 						initial={{ opacity: 0 }}
