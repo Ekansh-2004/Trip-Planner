@@ -2,6 +2,9 @@
 .DS_Store
 Thumbs.db
 
+# Local-only Claude Code context (not for GitHub)
+CLAUDE.md
+
 # Editors
 .vscode/*
 !.vscode/extensions.json

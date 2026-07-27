@@ -740,8 +740,15 @@ const ItineraryPage = () => {
 	return (
 		<div>
 			<main className="max-w-4xl mx-auto px-8 py-8 mt-8 bg-white rounded-xl shadow-lg border border-[#DEE2E6] print:shadow-none print:border-0 print:mt-0 print:max-w-none">
-				<div className="flex items-center justify-between mb-4">
-					<h1 className="text-4xl font-bold text-gray-800">{itineraryData.tripTitle}</h1>
+				<div className="flex items-start justify-between mb-1 gap-4">
+					<div>
+						<h1 className="text-4xl font-bold text-gray-800">{itineraryData.tripTitle}</h1>
+						{activeTab === "Itinerary" && (
+							<p className="text-sm text-gray-500 mt-1 max-w-md">
+								This itinerary is generated based on the distance from your starting point and geographic clustering of attractions. Manually reordering below may disrupt that optimization.
+							</p>
+						)}
+					</div>
 
 					{/* NEW: Manual Refresh Button */}
 					{activeTab === "Itinerary" && (
