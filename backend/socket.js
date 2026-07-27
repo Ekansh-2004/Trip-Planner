@@ -16,7 +16,7 @@ const broadcastPresence = async (io, room) => {
 export const initSocket = (httpServer) => {
 	const io = new Server(httpServer, {
 		cors: {
-			origin: ["http://localhost:5173", "http://localhost:3001", "https://trip-planner-lovat-psi.vercel.app"],
+			origin: ["http://localhost:5173", "http://localhost:3001", "https://frontend-smoky-theta-13.vercel.app"],
 			credentials: true,
 		},
 	});
