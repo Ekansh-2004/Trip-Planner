@@ -21,11 +21,19 @@ export const initSocket = (httpServer) => {
 		},
 	});
 
+	// Authenticates the socket if a JWT cookie is present, but — unlike the old
+	// version of this middleware — no longer hard-rejects a connection that has
+	// none. Anonymous connections are allowed through so a share-link guest (no
+	// account) can still connect; they just won't have `socket.user` set, and
+	// join-itinerary below is what actually decides whether they may edit.
 	io.use(async (socket, next) => {
 		try {
 			const cookies = parseCookie(socket.handshake.headers.cookie || "");
 			const token = cookies.jwt;
-			if (!token) return next(new Error("Unauthorized"));
+			if (!token) {
+				socket.user = null;
+				return next();
+			}
 
 			const decoded = jwt.verify(token, process.env.JWT_SECRET);
 			if (!decoded?.userId) return next(new Error("Unauthorized"));
@@ -41,22 +49,27 @@ export const initSocket = (httpServer) => {
 	});
 
 	io.on("connection", (socket) => {
-		socket.on("join-itinerary", async ({ itineraryId }) => {
+		socket.on("join-itinerary", async ({ itineraryId, shareToken }) => {
 			try {
 				if (!mongoose.Types.ObjectId.isValid(itineraryId)) {
 					return socket.emit("join-error", { error: "Invalid itinerary id" });
 				}
 
-				const itinerary = await Itinerary.findById(itineraryId).select("user");
+				const itinerary = await Itinerary.findById(itineraryId).select("user shareToken");
 				if (!itinerary) {
 					return socket.emit("join-error", { error: "Itinerary not found" });
 				}
-				if (itinerary.user.toString() !== socket.user._id.toString()) {
+
+				const isOwner = socket.user && itinerary.user.toString() === socket.user._id.toString();
+				const isValidGuest = !isOwner && shareToken && itinerary.shareToken && shareToken === itinerary.shareToken;
+
+				if (!isOwner && !isValidGuest) {
 					return socket.emit("join-error", { error: "Not authorized to edit this itinerary" });
 				}
 
 				const room = roomName(itineraryId);
 				socket.itineraryRoom = room;
+				socket.editAccess = isOwner ? "owner" : "guest";
 				socket.join(room);
 
 				await broadcastPresence(io, room);
@@ -71,16 +84,16 @@ export const initSocket = (httpServer) => {
 				if (!mongoose.Types.ObjectId.isValid(itineraryId)) {
 					return socket.emit("reorder-error", { error: "Invalid itinerary id" });
 				}
-				if (socket.itineraryRoom !== roomName(itineraryId)) {
+				// Room membership is itself proof of authorization (owner or valid
+				// share-token guest) — it was already checked once in join-itinerary,
+				// and a socket only ever holds one itinerary room at a time.
+				if (socket.itineraryRoom !== roomName(itineraryId) || !socket.editAccess) {
 					return socket.emit("reorder-error", { error: "Join the itinerary session before editing" });
 				}
 
 				const itinerary = await Itinerary.findById(itineraryId);
 				if (!itinerary) {
 					return socket.emit("reorder-error", { error: "Itinerary not found" });
-				}
-				if (itinerary.user.toString() !== socket.user._id.toString()) {
-					return socket.emit("reorder-error", { error: "Not authorized to edit this itinerary" });
 				}
 
 				const { newDaysPlan, error } = buildValidatedDaysPlan(itinerary, daysPlan);
@@ -109,6 +122,7 @@ export const initSocket = (httpServer) => {
 			const room = socket.itineraryRoom;
 			socket.leave(room);
 			socket.itineraryRoom = null;
+			socket.editAccess = null;
 			await broadcastPresence(io, room);
 		});
 

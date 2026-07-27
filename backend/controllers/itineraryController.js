@@ -354,6 +354,40 @@ export const getPublicItinerary = async (req, res) => {
 	}
 };
 
+// REST fallback for share-link guests reordering an itinerary when the live
+// socket isn't connected — guests have no account/JWT, so this is gated by
+// the shareToken alone (same trust boundary as the socket's guest join path
+// in socket.js) rather than protectRoute. Reuses the same validator as the
+// owner-only PUT so a guest can only rearrange attractions, never inject or
+// drop one, same as every other entry point into daysPlan edits.
+export const updatePublicItinerary = async (req, res) => {
+	try {
+		const { shareToken } = req.params;
+		const { daysPlan } = req.body;
+
+		const itinerary = await Itinerary.findOne({ shareToken });
+		if (!itinerary) {
+			return res.status(404).json({ error: "Shared itinerary not found" });
+		}
+
+		const { newDaysPlan, error } = buildValidatedDaysPlan(itinerary, daysPlan);
+		if (error) {
+			return res.status(400).json({ error });
+		}
+
+		itinerary.daysPlan = newDaysPlan;
+		itinerary.updatedAt = new Date();
+		await itinerary.save();
+
+		const populatedItinerary = await Itinerary.findById(itinerary._id).populate("daysPlan.attractions daysPlan.morning daysPlan.evening");
+
+		res.status(200).json({ itinerary: populatedItinerary.daysPlan, itineraryId: populatedItinerary._id });
+	} catch (error) {
+		console.error("Error updating public itinerary:", error);
+		res.status(500).json({ error: "Failed to update shared itinerary" });
+	}
+};
+
 // Persists a user-reordered/drag-and-dropped daysPlan. Only allows rearranging
 // attractions that already belong to this itinerary — every attraction id from
 // the original itinerary must appear exactly once across the submitted days,
