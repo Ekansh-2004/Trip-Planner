@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { Server } from "socket.io";
 import Itinerary from "./models/Itinerary.js";
 import User from "./models/User.js";
+import { buildValidatedDaysPlan } from "./utils/itineraryDaysPlan.js";
 
 const roomName = (itineraryId) => `itinerary:${itineraryId}`;
 
@@ -62,6 +63,44 @@ export const initSocket = (httpServer) => {
 			} catch (error) {
 				console.error("Error joining itinerary room:", error);
 				socket.emit("join-error", { error: "Failed to join itinerary session" });
+			}
+		});
+
+		socket.on("reorder-itinerary", async ({ itineraryId, daysPlan }) => {
+			try {
+				if (!mongoose.Types.ObjectId.isValid(itineraryId)) {
+					return socket.emit("reorder-error", { error: "Invalid itinerary id" });
+				}
+				if (socket.itineraryRoom !== roomName(itineraryId)) {
+					return socket.emit("reorder-error", { error: "Join the itinerary session before editing" });
+				}
+
+				const itinerary = await Itinerary.findById(itineraryId);
+				if (!itinerary) {
+					return socket.emit("reorder-error", { error: "Itinerary not found" });
+				}
+				if (itinerary.user.toString() !== socket.user._id.toString()) {
+					return socket.emit("reorder-error", { error: "Not authorized to edit this itinerary" });
+				}
+
+				const { newDaysPlan, error } = buildValidatedDaysPlan(itinerary, daysPlan);
+				if (error) {
+					return socket.emit("reorder-error", { error });
+				}
+
+				itinerary.daysPlan = newDaysPlan;
+				itinerary.updatedAt = new Date();
+				await itinerary.save();
+
+				const populatedItinerary = await Itinerary.findById(itinerary._id).populate("daysPlan.attractions daysPlan.morning daysPlan.evening");
+
+				io.to(socket.itineraryRoom).emit("itinerary-updated", {
+					itineraryId,
+					daysPlan: populatedItinerary.daysPlan,
+				});
+			} catch (error) {
+				console.error("Error handling reorder-itinerary:", error);
+				socket.emit("reorder-error", { error: "Failed to save changes" });
 			}
 		});
 

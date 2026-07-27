@@ -1,8 +1,8 @@
 import crypto from "crypto";
-import mongoose from "mongoose";
 import Itinerary from "../models/Itinerary.js";
 import Place from "../models/Place.js";
 import User from "../models/User.js";
+import { buildValidatedDaysPlan } from "../utils/itineraryDaysPlan.js";
 
 
 
@@ -364,10 +364,6 @@ export const updateItinerary = async (req, res) => {
 		const { itineraryId } = req.params;
 		const { daysPlan } = req.body;
 
-		if (!Array.isArray(daysPlan) || daysPlan.length === 0) {
-			return res.status(400).json({ error: "daysPlan must be a non-empty array" });
-		}
-
 		const itinerary = await Itinerary.findById(itineraryId);
 		if (!itinerary) {
 			return res.status(404).json({ error: "Itinerary not found" });
@@ -376,49 +372,9 @@ export const updateItinerary = async (req, res) => {
 			return res.status(403).json({ error: "Not authorized to edit this itinerary" });
 		}
 
-		if (daysPlan.length !== itinerary.days) {
-			return res.status(400).json({ error: `daysPlan must contain exactly ${itinerary.days} day(s)` });
-		}
-
-		const existingAttractionIds = new Set(itinerary.daysPlan.flatMap((d) => d.attractions.map((id) => id.toString())));
-
-		const morningCount = 3;
-		const seenIds = new Set();
-		const newDaysPlan = [];
-
-		for (let i = 0; i < daysPlan.length; i++) {
-			const dayEntry = daysPlan[i];
-			const dayNumber = Number(dayEntry.day);
-			if (dayNumber !== i + 1) {
-				return res.status(400).json({ error: "daysPlan entries must be ordered and numbered 1..N" });
-			}
-
-			const attractionIds = Array.isArray(dayEntry.attractions) ? dayEntry.attractions : [];
-
-			for (const id of attractionIds) {
-				if (!mongoose.Types.ObjectId.isValid(id)) {
-					return res.status(400).json({ error: `Invalid attraction id: ${id}` });
-				}
-				if (!existingAttractionIds.has(id.toString())) {
-					return res.status(400).json({ error: `Attraction ${id} does not belong to this itinerary` });
-				}
-				if (seenIds.has(id.toString())) {
-					return res.status(400).json({ error: `Attraction ${id} appears more than once` });
-				}
-				seenIds.add(id.toString());
-			}
-
-			newDaysPlan.push({
-				day: dayNumber,
-				attractions: attractionIds,
-				morning: attractionIds.slice(0, morningCount),
-				evening: attractionIds.slice(morningCount),
-				attractionCount: attractionIds.length,
-			});
-		}
-
-		if (seenIds.size !== existingAttractionIds.size) {
-			return res.status(400).json({ error: "daysPlan must include every attraction from the original itinerary exactly once" });
+		const { newDaysPlan, error } = buildValidatedDaysPlan(itinerary, daysPlan);
+		if (error) {
+			return res.status(400).json({ error });
 		}
 
 		itinerary.daysPlan = newDaysPlan;
