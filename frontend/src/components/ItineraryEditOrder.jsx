@@ -81,12 +81,17 @@ const syncBadgeText = (isSavingOrder, syncStatus) => {
 // day columns. Shared between ItineraryPage (owner) and PublicItineraryPage
 // (share-link guest) so both render identically — the pages differ only in
 // how they wire up useItineraryLiveEditing, not in what gets displayed.
-const ItineraryEditOrder = ({ days, attractionsByDay, dndSensors, handleDragEnd, syncStatus, isSavingOrder }) => {
+const ItineraryEditOrder = ({ days, attractionsByDay, dndSensors, handleDragEnd, syncStatus, isSavingOrder, presenceCount }) => {
 	return (
 		<div className="print:hidden">
-			<div className="flex items-center gap-2 mb-4">
+			<div className="flex items-center gap-2 mb-4 flex-wrap">
 				<p className="text-sm text-gray-500">Drag attractions to reorder within a day or move them between days — changes save automatically.</p>
 				<span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${syncBadgeClass(isSavingOrder, syncStatus)}`}>{syncBadgeText(isSavingOrder, syncStatus)}</span>
+				{syncStatus === "synced" && presenceCount > 1 && (
+					<span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+						{presenceCount} people editing
+					</span>
+				)}
 			</div>
 			<DndContext
 				sensors={dndSensors}

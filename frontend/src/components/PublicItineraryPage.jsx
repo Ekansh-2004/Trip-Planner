@@ -1,7 +1,9 @@
 // src/components/PublicItineraryPage.jsx
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import ItineraryEditOrder from "./ItineraryEditOrder";
 import LoadingSpinner from "./LoadingSpinner";
+import { mapDaysPlanToAttractionsByDay, useItineraryLiveEditing } from "../hooks/useItineraryLiveEditing";
 
 const AttractionRow = ({ attraction }) => (
 	<div className="flex gap-4 py-4 border-b border-gray-100 last:border-b-0">
@@ -25,21 +27,52 @@ const PublicItineraryPage = () => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
-	useEffect(() => {
-		const fetchPublicItinerary = async () => {
-			try {
-				const response = await fetch(`${import.meta.env.VITE_API_URL}/api/itinerary/public/${token}`);
-				const data = await response.json();
-				if (!response.ok) throw new Error(data.error || "Could not load this itinerary");
-				setItinerary(data);
-			} catch (err) {
-				setError(err.message);
-			} finally {
-				setLoading(false);
-			}
-		};
-		fetchPublicItinerary();
+	const fetchPublicItinerary = useCallback(async () => {
+		try {
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/itinerary/public/${token}`);
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error || "Could not load this itinerary");
+			setItinerary(data);
+			return data;
+		} catch (err) {
+			setError(err.message);
+			return null;
+		}
 	}, [token]);
+
+	useEffect(() => {
+		fetchPublicItinerary().finally(() => setLoading(false));
+	}, [fetchPublicItinerary]);
+
+	const days = (itinerary?.daysPlan || []).map((_, idx) => `Day ${idx + 1}`);
+
+	const {
+		editMode,
+		setEditMode,
+		attractionsByDay,
+		setAttractionsByDay,
+		isSavingOrder,
+		saveOrderStatus,
+		syncStatus,
+		presenceCount,
+		handleDragEnd,
+		dndSensors,
+	} = useItineraryLiveEditing({
+		itineraryId: itinerary?.itineraryId || null,
+		days,
+		joinPayload: { shareToken: token },
+		restEndpoint: `${import.meta.env.VITE_API_URL}/api/itinerary/public/${token}`,
+	});
+
+	const handleToggleEditMode = async () => {
+		if (editMode) {
+			setEditMode(false);
+			await fetchPublicItinerary();
+		} else {
+			setAttractionsByDay(mapDaysPlanToAttractionsByDay(itinerary.daysPlan));
+			setEditMode(true);
+		}
+	};
 
 	if (loading) {
 		return (
@@ -71,6 +104,14 @@ const PublicItineraryPage = () => {
 					<div className="flex items-center gap-2">
 						<span className="print:hidden text-sm font-semibold text-white bg-[#ef5006] px-3 py-1 rounded-full">Shared itinerary</span>
 						<button
+							onClick={handleToggleEditMode}
+							className={`print:hidden flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+								editMode ? "bg-gray-800 text-white border-gray-800 hover:bg-gray-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+							}`}
+						>
+							{editMode ? "Done Editing" : "Edit Order"}
+						</button>
+						<button
 							onClick={() => window.print()}
 							className="print:hidden flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
 						>
@@ -79,41 +120,55 @@ const PublicItineraryPage = () => {
 					</div>
 				</div>
 				<p className="text-gray-500 mb-8">
-					A {itinerary.days}-day trip to {itinerary.city}. Sign up to build your own itinerary in minutes.
+					A {itinerary.days}-day trip to {itinerary.city}. Anyone with this link can view and reorder it. Sign up to build your own itinerary in minutes.
 				</p>
 
-				{(itinerary.daysPlan || []).map((dayData) => (
-					<div
-						key={dayData.day}
-						className="mb-10"
-					>
-						<h2 className="text-2xl font-bold text-gray-800 mb-4">Day {dayData.day}</h2>
+				{saveOrderStatus && <p className="print:hidden text-sm text-red-600 font-semibold mb-4">{saveOrderStatus}</p>}
 
-						{dayData.morning?.length > 0 && (
-							<div className="mb-6">
-								<h3 className="text-lg font-bold text-gray-500 mb-2">Morning</h3>
-								{dayData.morning.map((attraction) => (
-									<AttractionRow
-										key={attraction._id}
-										attraction={attraction}
-									/>
-								))}
-							</div>
-						)}
+				{editMode ? (
+					<ItineraryEditOrder
+						days={days}
+						attractionsByDay={attractionsByDay}
+						dndSensors={dndSensors}
+						handleDragEnd={handleDragEnd}
+						syncStatus={syncStatus}
+						isSavingOrder={isSavingOrder}
+						presenceCount={presenceCount}
+					/>
+				) : (
+					(itinerary.daysPlan || []).map((dayData) => (
+						<div
+							key={dayData.day}
+							className="mb-10"
+						>
+							<h2 className="text-2xl font-bold text-gray-800 mb-4">Day {dayData.day}</h2>
 
-						{dayData.evening?.length > 0 && (
-							<div>
-								<h3 className="text-lg font-bold text-gray-500 mb-2">Evening</h3>
-								{dayData.evening.map((attraction) => (
-									<AttractionRow
-										key={attraction._id}
-										attraction={attraction}
-									/>
-								))}
-							</div>
-						)}
-					</div>
-				))}
+							{dayData.morning?.length > 0 && (
+								<div className="mb-6">
+									<h3 className="text-lg font-bold text-gray-500 mb-2">Morning</h3>
+									{dayData.morning.map((attraction) => (
+										<AttractionRow
+											key={attraction._id}
+											attraction={attraction}
+										/>
+									))}
+								</div>
+							)}
+
+							{dayData.evening?.length > 0 && (
+								<div>
+									<h3 className="text-lg font-bold text-gray-500 mb-2">Evening</h3>
+									{dayData.evening.map((attraction) => (
+										<AttractionRow
+											key={attraction._id}
+											attraction={attraction}
+										/>
+									))}
+								</div>
+							)}
+						</div>
+					))
+				)}
 
 				<div className="print:hidden mt-8 text-center">
 					<Link

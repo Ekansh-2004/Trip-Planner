@@ -88,6 +88,7 @@ const ItineraryPage = () => {
 		isSavingOrder,
 		saveOrderStatus,
 		syncStatus,
+		presenceCount,
 		handleDragEnd,
 		dndSensors,
 	} = useItineraryLiveEditing({
@@ -726,6 +727,7 @@ const ItineraryPage = () => {
 						handleDragEnd={handleDragEnd}
 						syncStatus={syncStatus}
 						isSavingOrder={isSavingOrder}
+						presenceCount={presenceCount}
 					/>
 				)}
 

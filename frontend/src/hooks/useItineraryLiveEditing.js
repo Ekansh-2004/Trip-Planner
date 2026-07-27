@@ -35,6 +35,7 @@ export const useItineraryLiveEditing = ({ itineraryId, days, joinPayload = {}, r
 	const [isSavingOrder, setIsSavingOrder] = useState(false);
 	const [saveOrderStatus, setSaveOrderStatus] = useState(null);
 	const [syncStatus, setSyncStatus] = useState("idle"); // idle | connecting | synced | error
+	const [presenceCount, setPresenceCount] = useState(0);
 	const socketRef = useRef(null);
 	const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -49,8 +50,9 @@ export const useItineraryLiveEditing = ({ itineraryId, days, joinPayload = {}, r
 			socket.emit("join-itinerary", { itineraryId, ...joinPayload });
 		});
 
-		socket.on("presence", () => {
+		socket.on("presence", (payload) => {
 			setSyncStatus("synced");
+			setPresenceCount(payload.count);
 		});
 
 		socket.on("join-error", (payload) => {
@@ -68,7 +70,10 @@ export const useItineraryLiveEditing = ({ itineraryId, days, joinPayload = {}, r
 			setTimeout(() => setSaveOrderStatus(null), 4000);
 		});
 
-		socket.on("disconnect", () => setSyncStatus("idle"));
+		socket.on("disconnect", () => {
+			setSyncStatus("idle");
+			setPresenceCount(0);
+		});
 		socket.on("connect_error", () => setSyncStatus("error"));
 
 		return () => {
@@ -158,6 +163,7 @@ export const useItineraryLiveEditing = ({ itineraryId, days, joinPayload = {}, r
 		isSavingOrder,
 		saveOrderStatus,
 		syncStatus,
+		presenceCount,
 		handleDragEnd,
 		dndSensors,
 	};

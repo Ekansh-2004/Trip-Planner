@@ -343,6 +343,7 @@ export const getPublicItinerary = async (req, res) => {
 		}
 
 		res.status(200).json({
+			itineraryId: itinerary._id,
 			city: itinerary.city,
 			days: itinerary.days,
 			daysPlan: itinerary.daysPlan,
