@@ -2,94 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { closestCenter, DndContext, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { io } from "socket.io-client";
 import { ActionCard } from "./ActionCard";
 import { ActivityCard } from "./ActivityCard";
 import { DayNavigation } from "./DayNavigation";
+import ItineraryEditOrder from "./ItineraryEditOrder";
 import LoadingSpinner from "./LoadingSpinner";
 import NearbyPlacesModal from "./NearbyPlacesModal";
 import { TravelConnector } from "./TravelConnector";
+import { mapDaysPlanToAttractionsByDay, useItineraryLiveEditing } from "../hooks/useItineraryLiveEditing";
 
 import { motion } from "framer-motion";
-
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1564507592333-c60657eea523";
-
-// Shared by the initial/history-load timeline build and by live socket updates,
-// so both derive the drag-and-drop source of truth from a daysPlan the same way.
-const mapDaysPlanToAttractionsByDay = (daysPlan) => {
-	const result = {};
-	daysPlan.forEach((dayData, idx) => {
-		const dayKey = `Day ${idx + 1}`;
-		result[dayKey] = (dayData.attractions || []).map((attraction) => ({
-			id: attraction._id,
-			name: attraction.name,
-			image: attraction.image,
-			entry_fee: attraction.entry_fee,
-			opening_time: attraction.opening_time,
-			closing_time: attraction.closing_time,
-		}));
-	});
-	return result;
-};
-
-const SortableAttraction = ({ attraction }) => {
-	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: attraction.id });
-	const style = {
-		transform: CSS.Transform.toString(transform),
-		transition,
-		opacity: isDragging ? 0.4 : 1,
-	};
-
-	return (
-		<div
-			ref={setNodeRef}
-			style={style}
-			{...attributes}
-			{...listeners}
-			className="bg-white rounded-xl shadow p-3 mb-3 flex items-center gap-3 cursor-grab active:cursor-grabbing border border-gray-200 touch-none"
-		>
-			<img
-				src={attraction.image || FALLBACK_IMAGE}
-				alt={attraction.name}
-				className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
-			/>
-			<div className="min-w-0">
-				<p className="font-semibold text-gray-800 truncate">{attraction.name}</p>
-				<p className="text-xs text-gray-500">{attraction.entry_fee || "N/A"}</p>
-			</div>
-		</div>
-	);
-};
-
-const DroppableDayColumn = ({ dayKey, attractions }) => {
-	const { setNodeRef } = useDroppable({ id: dayKey });
-
-	return (
-		<div
-			ref={setNodeRef}
-			className="bg-gray-50 rounded-xl p-4 flex-1 min-w-[260px]"
-		>
-			<h3 className="font-bold text-gray-700 mb-3">{dayKey}</h3>
-			<SortableContext
-				items={attractions.map((a) => a.id)}
-				strategy={verticalListSortingStrategy}
-			>
-				<div className="min-h-[80px]">
-					{attractions.map((attraction) => (
-						<SortableAttraction
-							key={attraction.id}
-							attraction={attraction}
-						/>
-					))}
-					{attractions.length === 0 && <p className="text-sm text-gray-400 italic">Drop an attraction here</p>}
-				</div>
-			</SortableContext>
-		</div>
-	);
-};
 
 const containerVariants = {
 	hidden: { opacity: 0 },
@@ -155,57 +77,24 @@ const ItineraryPage = () => {
 	const [shareStatus, setShareStatus] = useState(null);
 
 	// Drag-and-drop day editing — auto-saves live (via socket when connected,
-	// falling back to a direct REST PUT when it isn't)
-	const [editMode, setEditMode] = useState(false);
-	const [attractionsByDay, setAttractionsByDay] = useState({});
-	const [isSavingOrder, setIsSavingOrder] = useState(false);
-	const [saveOrderStatus, setSaveOrderStatus] = useState(null);
-	const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-	// Live sync: while Edit Order is open, connect to the itinerary's socket room
-	// so the owner's other open tabs/devices see drag changes as they happen.
-	const [syncStatus, setSyncStatus] = useState("idle"); // idle | connecting | synced | error
-	const socketRef = useRef(null);
-
-	useEffect(() => {
-		if (!editMode || !itineraryId) return;
-
-		setSyncStatus("connecting");
-		const socket = io(import.meta.env.VITE_API_URL, { withCredentials: true });
-		socketRef.current = socket;
-
-		socket.on("connect", () => {
-			socket.emit("join-itinerary", { itineraryId });
-		});
-
-		socket.on("presence", () => {
-			setSyncStatus("synced");
-		});
-
-		socket.on("join-error", (payload) => {
-			console.error("Failed to join live edit session:", payload.error);
-			setSyncStatus("error");
-		});
-
-		socket.on("itinerary-updated", (payload) => {
-			setAttractionsByDay(mapDaysPlanToAttractionsByDay(payload.daysPlan));
-		});
-
-		socket.on("reorder-error", (payload) => {
-			console.error("Reorder rejected by server:", payload.error);
-			setSaveOrderStatus(payload.error || "Could not save that change.");
-			setTimeout(() => setSaveOrderStatus(null), 4000);
-		});
-
-		socket.on("disconnect", () => setSyncStatus("idle"));
-		socket.on("connect_error", () => setSyncStatus("error"));
-
-		return () => {
-			socket.emit("leave-itinerary");
-			socket.disconnect();
-			socketRef.current = null;
-		};
-	}, [editMode, itineraryId]);
+	// falling back to a direct REST PUT when it isn't). Shared with
+	// PublicItineraryPage via useItineraryLiveEditing so the two don't
+	// duplicate the connect/join/persist logic.
+	const {
+		editMode,
+		setEditMode,
+		attractionsByDay,
+		setAttractionsByDay,
+		isSavingOrder,
+		saveOrderStatus,
+		syncStatus,
+		handleDragEnd,
+		dndSensors,
+	} = useItineraryLiveEditing({
+		itineraryId,
+		days: itineraryData?.days || [],
+		restEndpoint: itineraryId ? `${import.meta.env.VITE_API_URL}/api/itinerary/${itineraryId}` : null,
+	});
 
 	const itineraryDataRef = useRef(itineraryData);
 	useEffect(() => {
@@ -562,77 +451,6 @@ const ItineraryPage = () => {
 		setModalContent({ type: actionType, lat, lng, city, userLocation });
 	};
 
-	const findDayContainingAttraction = (attractionId) => {
-		if (attractionsByDay[attractionId]) return attractionId;
-		return Object.keys(attractionsByDay).find((dayKey) => attractionsByDay[dayKey].some((a) => a.id === attractionId));
-	};
-
-	// Persists a new attractionsByDay state — over the live socket connection when
-	// connected/synced, otherwise falling back to a direct REST PUT so editing still
-	// works without a live connection (e.g. the socket hasn't finished connecting yet).
-	const persistDaysPlan = async (updatedAttractionsByDay) => {
-		if (!itineraryId || !itineraryData) return;
-
-		const daysPlan = itineraryData.days.map((dayKey, idx) => ({
-			day: idx + 1,
-			attractions: (updatedAttractionsByDay[dayKey] || []).map((a) => a.id),
-		}));
-
-		const socket = socketRef.current;
-		if (socket && socket.connected && syncStatus === "synced") {
-			socket.emit("reorder-itinerary", { itineraryId, daysPlan });
-			return;
-		}
-
-		setIsSavingOrder(true);
-		try {
-			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/itinerary/${itineraryId}`, {
-				method: "PUT",
-				credentials: "include",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ daysPlan }),
-			});
-			const data = await response.json();
-			if (!response.ok) throw new Error(data.error || "Failed to save changes");
-			setAttractionsByDay(mapDaysPlanToAttractionsByDay(data.itinerary));
-		} catch (err) {
-			console.error("Error saving itinerary order:", err);
-			setSaveOrderStatus(err.message || "Could not save changes.");
-			setTimeout(() => setSaveOrderStatus(null), 4000);
-		} finally {
-			setIsSavingOrder(false);
-		}
-	};
-
-	const handleDragEnd = (event) => {
-		const { active, over } = event;
-		if (!over) return;
-
-		const activeDayKey = findDayContainingAttraction(active.id);
-		const overDayKey = findDayContainingAttraction(over.id) || over.id;
-		if (!activeDayKey || !overDayKey || !attractionsByDay[overDayKey]) return;
-
-		const activeItems = [...attractionsByDay[activeDayKey]];
-		const activeIndex = activeItems.findIndex((a) => a.id === active.id);
-		if (activeIndex === -1) return;
-
-		let updated;
-		if (activeDayKey === overDayKey) {
-			const overIndex = activeItems.findIndex((a) => a.id === over.id);
-			if (overIndex === -1 || overIndex === activeIndex) return;
-			updated = { ...attractionsByDay, [activeDayKey]: arrayMove(activeItems, activeIndex, overIndex) };
-		} else {
-			const [movedAttraction] = activeItems.splice(activeIndex, 1);
-			const overItems = [...attractionsByDay[overDayKey]];
-			const overIndex = overItems.findIndex((a) => a.id === over.id);
-			overItems.splice(overIndex === -1 ? overItems.length : overIndex, 0, movedAttraction);
-			updated = { ...attractionsByDay, [activeDayKey]: activeItems, [overDayKey]: overItems };
-		}
-
-		setAttractionsByDay(updated);
-		persistDaysPlan(updated);
-	};
-
 	// Refetches the itinerary so the rich read-only timeline (traffic legs, action
 	// cards) reflects whatever order was last saved during live editing — the
 	// lightweight attractionsByDay used for dragging doesn't carry everything
@@ -901,41 +719,14 @@ const ItineraryPage = () => {
 				</div>
 
 				{activeTab === "Itinerary" && editMode && (
-					<div className="print:hidden">
-						<div className="flex items-center gap-2 mb-4">
-							<p className="text-sm text-gray-500">Drag attractions to reorder within a day or move them between days — changes save automatically.</p>
-							<span
-								className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-									isSavingOrder
-										? "bg-yellow-100 text-yellow-700"
-										: syncStatus === "synced"
-											? "bg-green-100 text-green-700"
-											: syncStatus === "connecting"
-												? "bg-yellow-100 text-yellow-700"
-												: syncStatus === "error"
-													? "bg-red-100 text-red-700"
-													: "bg-gray-100 text-gray-500"
-								}`}
-							>
-								{isSavingOrder ? "Saving…" : syncStatus === "synced" ? "Live synced" : syncStatus === "connecting" ? "Connecting…" : syncStatus === "error" ? "Sync unavailable" : "Offline"}
-							</span>
-						</div>
-						<DndContext
-							sensors={dndSensors}
-							collisionDetection={closestCenter}
-							onDragEnd={handleDragEnd}
-						>
-							<div className="flex gap-4 flex-wrap">
-								{itineraryData.days.map((dayKey) => (
-									<DroppableDayColumn
-										key={dayKey}
-										dayKey={dayKey}
-										attractions={attractionsByDay[dayKey] || []}
-									/>
-								))}
-							</div>
-						</DndContext>
-					</div>
+					<ItineraryEditOrder
+						days={itineraryData.days}
+						attractionsByDay={attractionsByDay}
+						dndSensors={dndSensors}
+						handleDragEnd={handleDragEnd}
+						syncStatus={syncStatus}
+						isSavingOrder={isSavingOrder}
+					/>
 				)}
 
 				{activeTab === "Itinerary" && !editMode && (
