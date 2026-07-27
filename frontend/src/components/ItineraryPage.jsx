@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import { closestCenter, DndContext, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { io } from "socket.io-client";
 import { ActionCard } from "./ActionCard";
 import { ActivityCard } from "./ActivityCard";
 import { DayNavigation } from "./DayNavigation";
@@ -15,6 +16,24 @@ import { TravelConnector } from "./TravelConnector";
 import { motion } from "framer-motion";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1564507592333-c60657eea523";
+
+// Shared by the initial/history-load timeline build and by live socket updates,
+// so both derive the drag-and-drop source of truth from a daysPlan the same way.
+const mapDaysPlanToAttractionsByDay = (daysPlan) => {
+	const result = {};
+	daysPlan.forEach((dayData, idx) => {
+		const dayKey = `Day ${idx + 1}`;
+		result[dayKey] = (dayData.attractions || []).map((attraction) => ({
+			id: attraction._id,
+			name: attraction.name,
+			image: attraction.image,
+			entry_fee: attraction.entry_fee,
+			opening_time: attraction.opening_time,
+			closing_time: attraction.closing_time,
+		}));
+	});
+	return result;
+};
 
 const SortableAttraction = ({ attraction }) => {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: attraction.id });
@@ -142,6 +161,47 @@ const ItineraryPage = () => {
 	const [isSavingOrder, setIsSavingOrder] = useState(false);
 	const [saveOrderStatus, setSaveOrderStatus] = useState(null);
 	const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+	// Live sync: while Edit Order is open, connect to the itinerary's socket room
+	// so the owner's other open tabs/devices see drag changes as they happen.
+	const [syncStatus, setSyncStatus] = useState("idle"); // idle | connecting | synced | error
+	const socketRef = useRef(null);
+
+	useEffect(() => {
+		if (!editMode || !itineraryId) return;
+
+		setSyncStatus("connecting");
+		const socket = io(import.meta.env.VITE_API_URL, { withCredentials: true });
+		socketRef.current = socket;
+
+		socket.on("connect", () => {
+			socket.emit("join-itinerary", { itineraryId });
+		});
+
+		socket.on("presence", () => {
+			setSyncStatus("synced");
+		});
+
+		socket.on("join-error", (payload) => {
+			console.error("Failed to join live edit session:", payload.error);
+			setSyncStatus("error");
+		});
+
+		socket.on("itinerary-updated", (payload) => {
+			const updated = mapDaysPlanToAttractionsByDay(payload.daysPlan);
+			setAttractionsByDay(updated);
+			setInitialAttractionsByDay(updated);
+		});
+
+		socket.on("disconnect", () => setSyncStatus("idle"));
+		socket.on("connect_error", () => setSyncStatus("error"));
+
+		return () => {
+			socket.emit("leave-itinerary");
+			socket.disconnect();
+			socketRef.current = null;
+		};
+	}, [editMode, itineraryId]);
 
 	const itineraryDataRef = useRef(itineraryData);
 	useEffect(() => {
@@ -280,21 +340,12 @@ const ItineraryPage = () => {
 	const buildItineraryTimeline = async (backendItinerary, tripCity, cacheInfo = null, itineraryIdForCache = null) => {
 		const days = backendItinerary.map((_, idx) => `Day ${idx + 1}`);
 		const timeline = {};
-		const newAttractionsByDay = {};
+		const newAttractionsByDay = mapDaysPlanToAttractionsByDay(backendItinerary);
 
 		for (let dayIndex = 0; dayIndex < backendItinerary.length; dayIndex++) {
 			const dayKey = `Day ${dayIndex + 1}`;
 			const dayData = backendItinerary[dayIndex];
 			const morningAttractions = dayData.morning || [];
-
-			newAttractionsByDay[dayKey] = (dayData.attractions || []).map((attraction) => ({
-				id: attraction._id,
-				name: attraction.name,
-				image: attraction.image,
-				entry_fee: attraction.entry_fee,
-				opening_time: attraction.opening_time,
-				closing_time: attraction.closing_time,
-			}));
 			const eveningAttractions = dayData.evening || [];
 			const dayTimeline = [];
 			let lastAttraction = null;
@@ -838,7 +889,22 @@ const ItineraryPage = () => {
 
 				{activeTab === "Itinerary" && editMode && (
 					<div className="print:hidden">
-						<p className="text-sm text-gray-500 mb-4">Drag attractions to reorder within a day or move them between days, then click "Save Changes" above.</p>
+						<div className="flex items-center gap-2 mb-4">
+							<p className="text-sm text-gray-500">Drag attractions to reorder within a day or move them between days, then click "Save Changes" above.</p>
+							<span
+								className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+									syncStatus === "synced"
+										? "bg-green-100 text-green-700"
+										: syncStatus === "connecting"
+											? "bg-yellow-100 text-yellow-700"
+											: syncStatus === "error"
+												? "bg-red-100 text-red-700"
+												: "bg-gray-100 text-gray-500"
+								}`}
+							>
+								{syncStatus === "synced" ? "Live synced" : syncStatus === "connecting" ? "Connecting…" : syncStatus === "error" ? "Sync unavailable" : "Offline"}
+							</span>
+						</div>
 						<DndContext
 							sensors={dndSensors}
 							collisionDetection={closestCenter}
