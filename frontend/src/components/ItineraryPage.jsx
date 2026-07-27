@@ -154,10 +154,10 @@ const ItineraryPage = () => {
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareStatus, setShareStatus] = useState(null);
 
-	// Drag-and-drop day editing
+	// Drag-and-drop day editing — auto-saves live (via socket when connected,
+	// falling back to a direct REST PUT when it isn't)
 	const [editMode, setEditMode] = useState(false);
 	const [attractionsByDay, setAttractionsByDay] = useState({});
-	const [initialAttractionsByDay, setInitialAttractionsByDay] = useState({});
 	const [isSavingOrder, setIsSavingOrder] = useState(false);
 	const [saveOrderStatus, setSaveOrderStatus] = useState(null);
 	const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -188,9 +188,13 @@ const ItineraryPage = () => {
 		});
 
 		socket.on("itinerary-updated", (payload) => {
-			const updated = mapDaysPlanToAttractionsByDay(payload.daysPlan);
-			setAttractionsByDay(updated);
-			setInitialAttractionsByDay(updated);
+			setAttractionsByDay(mapDaysPlanToAttractionsByDay(payload.daysPlan));
+		});
+
+		socket.on("reorder-error", (payload) => {
+			console.error("Reorder rejected by server:", payload.error);
+			setSaveOrderStatus(payload.error || "Could not save that change.");
+			setTimeout(() => setSaveOrderStatus(null), 4000);
 		});
 
 		socket.on("disconnect", () => setSyncStatus("idle"));
@@ -478,7 +482,6 @@ const ItineraryPage = () => {
 
 		setItineraryData(finalItinerary);
 		setAttractionsByDay(newAttractionsByDay);
-		setInitialAttractionsByDay(newAttractionsByDay);
 		setEditMode(false);
 		setLastRefreshTime(new Date());
 
@@ -564,60 +567,25 @@ const ItineraryPage = () => {
 		return Object.keys(attractionsByDay).find((dayKey) => attractionsByDay[dayKey].some((a) => a.id === attractionId));
 	};
 
-	const handleDragEnd = (event) => {
-		const { active, over } = event;
-		if (!over) return;
-
-		const activeDayKey = findDayContainingAttraction(active.id);
-		const overDayKey = findDayContainingAttraction(over.id) || over.id;
-		if (!activeDayKey || !overDayKey || !attractionsByDay[overDayKey]) return;
-
-		setAttractionsByDay((prev) => {
-			const activeItems = [...prev[activeDayKey]];
-			const activeIndex = activeItems.findIndex((a) => a.id === active.id);
-			if (activeIndex === -1) return prev;
-
-			if (activeDayKey === overDayKey) {
-				const overIndex = activeItems.findIndex((a) => a.id === over.id);
-				if (overIndex === -1 || overIndex === activeIndex) return prev;
-				return { ...prev, [activeDayKey]: arrayMove(activeItems, activeIndex, overIndex) };
-			}
-
-			const [movedAttraction] = activeItems.splice(activeIndex, 1);
-			const overItems = [...prev[overDayKey]];
-			const overIndex = overItems.findIndex((a) => a.id === over.id);
-			overItems.splice(overIndex === -1 ? overItems.length : overIndex, 0, movedAttraction);
-
-			return { ...prev, [activeDayKey]: activeItems, [overDayKey]: overItems };
-		});
-	};
-
-	const isOrderDirty = (itineraryData?.days || []).some((dayKey) => {
-		const current = (attractionsByDay[dayKey] || []).map((a) => a.id).join(",");
-		const initial = (initialAttractionsByDay[dayKey] || []).map((a) => a.id).join(",");
-		return current !== initial;
-	});
-
-	const handleToggleEditMode = () => {
-		setEditMode((prev) => {
-			if (prev) {
-				// Leaving edit mode without saving — discard any unsaved drag changes
-				setAttractionsByDay(initialAttractionsByDay);
-			}
-			return !prev;
-		});
-	};
-
-	const handleSaveOrder = async () => {
+	// Persists a new attractionsByDay state — over the live socket connection when
+	// connected/synced, otherwise falling back to a direct REST PUT so editing still
+	// works without a live connection (e.g. the socket hasn't finished connecting yet).
+	const persistDaysPlan = async (updatedAttractionsByDay) => {
 		if (!itineraryId || !itineraryData) return;
-		setIsSavingOrder(true);
-		setSaveOrderStatus(null);
-		try {
-			const daysPlan = itineraryData.days.map((dayKey, idx) => ({
-				day: idx + 1,
-				attractions: (attractionsByDay[dayKey] || []).map((a) => a.id),
-			}));
 
+		const daysPlan = itineraryData.days.map((dayKey, idx) => ({
+			day: idx + 1,
+			attractions: (updatedAttractionsByDay[dayKey] || []).map((a) => a.id),
+		}));
+
+		const socket = socketRef.current;
+		if (socket && socket.connected && syncStatus === "synced") {
+			socket.emit("reorder-itinerary", { itineraryId, daysPlan });
+			return;
+		}
+
+		setIsSavingOrder(true);
+		try {
 			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/itinerary/${itineraryId}`, {
 				method: "PUT",
 				credentials: "include",
@@ -626,16 +594,70 @@ const ItineraryPage = () => {
 			});
 			const data = await response.json();
 			if (!response.ok) throw new Error(data.error || "Failed to save changes");
-
-			const cacheInfo = city && startLocation ? { startLocation, startDate, endDate } : null;
-			await buildItineraryTimeline(data.itinerary, itineraryData.city, cacheInfo, itineraryId);
-			setSaveOrderStatus("Changes saved!");
+			setAttractionsByDay(mapDaysPlanToAttractionsByDay(data.itinerary));
 		} catch (err) {
 			console.error("Error saving itinerary order:", err);
 			setSaveOrderStatus(err.message || "Could not save changes.");
+			setTimeout(() => setSaveOrderStatus(null), 4000);
 		} finally {
 			setIsSavingOrder(false);
-			setTimeout(() => setSaveOrderStatus(null), 4000);
+		}
+	};
+
+	const handleDragEnd = (event) => {
+		const { active, over } = event;
+		if (!over) return;
+
+		const activeDayKey = findDayContainingAttraction(active.id);
+		const overDayKey = findDayContainingAttraction(over.id) || over.id;
+		if (!activeDayKey || !overDayKey || !attractionsByDay[overDayKey]) return;
+
+		const activeItems = [...attractionsByDay[activeDayKey]];
+		const activeIndex = activeItems.findIndex((a) => a.id === active.id);
+		if (activeIndex === -1) return;
+
+		let updated;
+		if (activeDayKey === overDayKey) {
+			const overIndex = activeItems.findIndex((a) => a.id === over.id);
+			if (overIndex === -1 || overIndex === activeIndex) return;
+			updated = { ...attractionsByDay, [activeDayKey]: arrayMove(activeItems, activeIndex, overIndex) };
+		} else {
+			const [movedAttraction] = activeItems.splice(activeIndex, 1);
+			const overItems = [...attractionsByDay[overDayKey]];
+			const overIndex = overItems.findIndex((a) => a.id === over.id);
+			overItems.splice(overIndex === -1 ? overItems.length : overIndex, 0, movedAttraction);
+			updated = { ...attractionsByDay, [activeDayKey]: activeItems, [overDayKey]: overItems };
+		}
+
+		setAttractionsByDay(updated);
+		persistDaysPlan(updated);
+	};
+
+	// Refetches the itinerary so the rich read-only timeline (traffic legs, action
+	// cards) reflects whatever order was last saved during live editing — the
+	// lightweight attractionsByDay used for dragging doesn't carry everything
+	// (lat/lng, etc.) the timeline view needs, so this re-reads from the server
+	// rather than trying to reconstruct it client-side.
+	const refreshAfterEditing = async () => {
+		if (!itineraryId) return;
+		try {
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/itinerary/history`, { credentials: "include" });
+			const data = await response.json();
+			const trip = Array.isArray(data) ? data.find((t) => t._id === itineraryId) : null;
+			if (!trip) return;
+			const cacheInfo = city && startLocation ? { startLocation, startDate, endDate } : null;
+			await buildItineraryTimeline(trip.daysPlan, trip.city, cacheInfo, itineraryId);
+		} catch (err) {
+			console.error("Error refreshing itinerary after live edit:", err);
+		}
+	};
+
+	const handleToggleEditMode = () => {
+		if (editMode) {
+			setEditMode(false);
+			refreshAfterEditing();
+		} else {
+			setEditMode(true);
 		}
 	};
 
@@ -804,15 +826,6 @@ const ItineraryPage = () => {
 					{/* NEW: Manual Refresh Button */}
 					{activeTab === "Itinerary" && (
 						<div className="print:hidden flex items-center gap-2">
-							{editMode && (
-								<button
-									onClick={handleSaveOrder}
-									disabled={isSavingOrder || !isOrderDirty}
-									className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									{isSavingOrder ? "Saving..." : "Save Changes"}
-								</button>
-							)}
 							<button
 								onClick={handleToggleEditMode}
 								className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
@@ -860,7 +873,7 @@ const ItineraryPage = () => {
 				</div>
 
 				{/* Show last refresh time / share status */}
-				{saveOrderStatus && activeTab === "Itinerary" && <p className="print:hidden text-sm text-green-700 font-semibold mb-4">{saveOrderStatus}</p>}
+				{saveOrderStatus && activeTab === "Itinerary" && <p className="print:hidden text-sm text-red-600 font-semibold mb-4">{saveOrderStatus}</p>}
 				{shareStatus && activeTab === "Itinerary" && <p className="print:hidden text-sm text-[#ef5006] font-semibold mb-4">{shareStatus}</p>}
 				{lastRefreshTime && activeTab === "Itinerary" && (
 					<p className="print:hidden text-sm text-gray-500 mb-4">
@@ -890,19 +903,21 @@ const ItineraryPage = () => {
 				{activeTab === "Itinerary" && editMode && (
 					<div className="print:hidden">
 						<div className="flex items-center gap-2 mb-4">
-							<p className="text-sm text-gray-500">Drag attractions to reorder within a day or move them between days, then click "Save Changes" above.</p>
+							<p className="text-sm text-gray-500">Drag attractions to reorder within a day or move them between days — changes save automatically.</p>
 							<span
 								className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-									syncStatus === "synced"
-										? "bg-green-100 text-green-700"
-										: syncStatus === "connecting"
-											? "bg-yellow-100 text-yellow-700"
-											: syncStatus === "error"
-												? "bg-red-100 text-red-700"
-												: "bg-gray-100 text-gray-500"
+									isSavingOrder
+										? "bg-yellow-100 text-yellow-700"
+										: syncStatus === "synced"
+											? "bg-green-100 text-green-700"
+											: syncStatus === "connecting"
+												? "bg-yellow-100 text-yellow-700"
+												: syncStatus === "error"
+													? "bg-red-100 text-red-700"
+													: "bg-gray-100 text-gray-500"
 								}`}
 							>
-								{syncStatus === "synced" ? "Live synced" : syncStatus === "connecting" ? "Connecting…" : syncStatus === "error" ? "Sync unavailable" : "Offline"}
+								{isSavingOrder ? "Saving…" : syncStatus === "synced" ? "Live synced" : syncStatus === "connecting" ? "Connecting…" : syncStatus === "error" ? "Sync unavailable" : "Offline"}
 							</span>
 						</div>
 						<DndContext
