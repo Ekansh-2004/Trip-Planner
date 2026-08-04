@@ -1,6 +1,6 @@
 // src/components/ItineraryPage.jsx
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ActionCard } from "./ActionCard";
 import { ActivityCard } from "./ActivityCard";
@@ -9,6 +9,7 @@ import ItineraryEditOrder from "./ItineraryEditOrder";
 import LoadingSpinner from "./LoadingSpinner";
 import NearbyPlacesModal from "./NearbyPlacesModal";
 import { TravelConnector } from "./TravelConnector";
+import TripMap from "./TripMap";
 import { mapDaysPlanToAttractionsByDay, useItineraryLiveEditing } from "../hooks/useItineraryLiveEditing";
 
 import { motion } from "framer-motion";
@@ -605,6 +606,24 @@ const ItineraryPage = () => {
 		refreshAllTraffic();
 	}, [loading, error]);
 
+	// Flattens every day's activity stops into the { lat, lng, title } shape
+	// TripMap wants. The timeline is the right source here (not attractionsByDay,
+	// which carries no coordinates) and it's also what gets cached to
+	// localStorage, so the map survives a reload.
+	const mapPoints = useMemo(() => {
+		if (!itineraryData?.days) return [];
+		return itineraryData.days.flatMap((dayKey, dayIndex) =>
+			(itineraryData.timeline?.[dayKey] || [])
+				.filter((item) => item.type === "activity")
+				.map((item) => ({
+					lat: item.details.lat,
+					lng: item.details.lng,
+					title: item.details.title,
+					day: dayIndex + 1,
+				})),
+		);
+	}, [itineraryData]);
+
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
@@ -738,6 +757,10 @@ const ItineraryPage = () => {
 						animate={{ opacity: 1 }}
 						transition={{ duration: 0.5 }}
 					>
+						<TripMap
+							points={mapPoints}
+							className="print:hidden mb-6"
+						/>
 						<DayNavigation
 							days={itineraryData.days}
 							activeDay={activeDay}
